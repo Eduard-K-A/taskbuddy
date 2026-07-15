@@ -78,10 +78,14 @@ Runs scored by this stub are recorded with `model_version = 'stub-v0'` in
 
 ## Deploy
 
-Any Python host works (Railway, Render, Fly.io, a VPS). Start command:
+The backend is already deployed on Render (https://taskbuddy-1d48.onrender.com),
+so the natural home for this service is a **second free Render web service from
+the same repo** with *Root Directory* = `ml-service`. Start command:
 
 ```
 uvicorn app.main:app --host 0.0.0.0 --port $PORT
 ```
 
-Then point the backend's `ML_SERVICE_URL` at it.
+Then set `ML_SERVICE_URL` to this service's URL in the backend's Render
+environment variables (Dashboard → taskbuddy backend → Environment) — the
+backend's status page ML dot turns green once it connects.

@@ -9,6 +9,12 @@ the best matches.
 The full data-schema and product spec lives in [`BACKEND_SCHEMA.md`](./BACKEND_SCHEMA.md)
 — that document is the source of truth for tables, lifecycle rules, and ML features.
 
+> **🚀 Deployed instance:** the backend is live at
+> **https://taskbuddy-1d48.onrender.com** — frontend developers can build
+> against it directly, no local backend setup required (see
+> [Base URL](#base-url) below). Status page: <https://taskbuddy-1d48.onrender.com/> ·
+> JSON health: <https://taskbuddy-1d48.onrender.com/health>
+
 ## Architecture
 
 ```
@@ -45,6 +51,10 @@ Job lifecycle: `open → recommending → assigned → in_progress → completed
 (plus `cancelled` from any pre-completion state, and `expired` after 24 h unassigned).
 
 ## Setup
+
+> Building a frontend? You can skip this whole section and use the
+> [deployed instance](#base-url). Local setup is only needed when working on
+> the backend itself.
 
 ### 1. Supabase project
 
@@ -88,6 +98,26 @@ The API works without it, but recommendation runs will fail until it's up
 (jobs still reach `recommending`; use the manual trigger endpoint to retry).
 
 ## For frontend developers
+
+### Base URL
+
+| Environment | Base URL |
+|---|---|
+| **Production (Render)** | `https://taskbuddy-1d48.onrender.com` |
+| Local development | `http://localhost:3000` |
+
+Don't hardcode the URL — read it from an environment variable so it can be
+switched per environment:
+
+- **web (Next.js):** put `NEXT_PUBLIC_API_URL=https://taskbuddy-1d48.onrender.com`
+  in `web/.env.local` and use `process.env.NEXT_PUBLIC_API_URL`.
+- **mobile (Expo):** put `EXPO_PUBLIC_API_URL=https://taskbuddy-1d48.onrender.com`
+  in `mobile/.env` and use `process.env.EXPO_PUBLIC_API_URL`.
+
+> **Free-tier note:** the Render instance spins down after ~15 minutes without
+> traffic; the first request after that takes 30–60 s to answer (cold start).
+> If a request seems to hang, wait — it's waking up, not broken. Check
+> <https://taskbuddy-1d48.onrender.com/health> if unsure.
 
 ### Authentication
 
@@ -172,14 +202,16 @@ Errors use NestJS's standard shape with proper status codes (400 validation,
 ### Example flow (curl)
 
 ```bash
+API=https://taskbuddy-1d48.onrender.com   # or http://localhost:3000
+
 # 1. Register + login as client
-curl -X POST localhost:3000/auth/register -H "Content-Type: application/json" \
+curl -X POST $API/auth/register -H "Content-Type: application/json" \
   -d '{"email":"client@test.com","password":"secret123","role":"client","full_name":"Ana Cruz"}'
-TOKEN=$(curl -sX POST localhost:3000/auth/login -H "Content-Type: application/json" \
+TOKEN=$(curl -sX POST $API/auth/login -H "Content-Type: application/json" \
   -d '{"email":"client@test.com","password":"secret123"}' | jq -r .session.access_token)
 
 # 2. Post a job
-curl -X POST localhost:3000/jobs -H "Authorization: Bearer $TOKEN" -H "Content-Type: application/json" \
+curl -X POST $API/jobs -H "Authorization: Bearer $TOKEN" -H "Content-Type: application/json" \
   -d '{"category_id":1,"title":"Fix kitchen faucet","description":"Tumutulo yung gripo sa kusina, need ayusin agad po.","urgency":"urgent","address":"Quezon City","latitude":14.6760,"longitude":121.0437}'
 ```
 

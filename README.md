@@ -6,6 +6,8 @@ invites the best-matched providers when a job goes unfilled past its urgency tim
 
 ## Repository layout
 
+**Live API:** https://taskbuddy-1d48.onrender.com ([status page](https://taskbuddy-1d48.onrender.com/) · [health JSON](https://taskbuddy-1d48.onrender.com/health)) — frontends should call this; see the [backend README](./backend/README.md#base-url).
+
 | Folder | What it is |
 |---|---|
 | [`backend/`](./backend) | **NestJS REST API + Supabase schema** — the active focus. Start here: [`backend/README.md`](./backend/README.md) |
