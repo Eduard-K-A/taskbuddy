@@ -157,3 +157,9 @@ CLAUDE*
 .claude/*
 # but DO commit env templates
 !.env.example
+
+# ML: training data and byproducts stay local; the model artifact IS committed
+ml-service/taskbuddy_synthetic_dataset.csv
+ml-service/.venv/
+ml-service/__pycache__/
+ml-service/**/__pycache__/
