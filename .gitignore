@@ -155,3 +155,5 @@ next-env.d.ts
 AGENTS*
 CLAUDE*
 .claude/*
+# but DO commit env templates
+!.env.example
