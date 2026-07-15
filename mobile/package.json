@@ -9,7 +9,6 @@
     "web": "expo start --web"
   },
   "dependencies": {
-    "@taskbuddy/shared-types": "*",
     "@supabase/supabase-js": "^2.30.0",
     "expo": "~54.0.34",
     "expo-status-bar": "~3.0.9",
