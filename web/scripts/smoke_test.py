@@ -23,6 +23,18 @@ with sync_playwright() as p:
     page.wait_for_load_state("networkidle")
     check("login page renders", page.locator("text=Admin Sign In").count() == 1)
 
+    # client-side validation: empty form
+    page.click('button:has-text("Sign In to Admin Console")')
+    page.wait_for_timeout(300)
+    check("empty login form validated", page.locator("text=Admin email is required").count() == 1)
+
+    # client-side validation: malformed email
+    page.fill('input[type="email"]', "not-an-email")
+    page.fill('input[type="password"]', "whatever1")
+    page.click('button:has-text("Sign In to Admin Console")')
+    page.wait_for_timeout(300)
+    check("malformed email validated", page.locator("text=Admin email must be a valid email").count() == 1)
+
     # wrong password shows an error
     page.fill('input[type="email"]', "admin@taskbuddy.io")
     page.fill('input[type="password"]', "wrong")
@@ -117,12 +129,28 @@ with sync_playwright() as p:
     prefs = page.evaluate("() => JSON.parse(localStorage.getItem('tb-admin-prefs'))")
     check("settings persist to localStorage", bool(prefs and prefs["settings"]["dailySummary"] is True))
 
+    # validation: weak new password (no number)
+    page.fill('input[placeholder="Required to change password"]', "Admin123!")
+    page.fill('input[placeholder="Min. 8 characters, letters & numbers"]', "weakpassword")
+    page.fill('input[placeholder="Re-enter the new password"]', "weakpassword")
+    page.click('button:has-text("Save Changes")')
+    page.wait_for_timeout(400)
+    check("weak password rejected", page.locator("text=must contain at least one number").count() == 1)
+
+    # validation: confirm mismatch
+    page.fill('input[placeholder="Min. 8 characters, letters & numbers"]', "NewPass123!")
+    page.fill('input[placeholder="Re-enter the new password"]', "Different123!")
+    page.click('button:has-text("Save Changes")')
+    page.wait_for_timeout(400)
+    check("password mismatch rejected", page.locator("text=Passwords do not match").count() == 1)
+
     # password change: wrong current fails
     page.fill('input[placeholder="Required to change password"]', "nope")
-    page.fill('input[placeholder="Min. 8 characters"]', "NewPass123!")
+    page.fill('input[placeholder="Min. 8 characters, letters & numbers"]', "NewPass123!")
+    page.fill('input[placeholder="Re-enter the new password"]', "NewPass123!")
     page.click('button:has-text("Save Changes")')
     page.wait_for_timeout(600)
-    check("wrong current password rejected", page.locator("text=Current password is incorrect").count() == 1)
+    check("wrong current password rejected", page.locator("text=Current password is incorrect").count() == 2)
     # correct current works
     page.fill('input[placeholder="Required to change password"]', "Admin123!")
     page.click('button:has-text("Save Changes")')

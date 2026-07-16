@@ -3,17 +3,28 @@
 import { useState } from "react";
 import { Mail, Lock, Shield, AlertCircle } from "lucide-react";
 import { useApp } from "@/context/AppContext";
+import { validateEmail, validateRequired } from "@/lib/validation";
 
 export function LoginPage() {
   const { login } = useApp();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
+  const [submitting, setSubmitting] = useState(false);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError("");
-    const ok = await login(email, password);
+
+    const invalid = validateEmail(email, "Admin email") ?? validateRequired(password, "Password");
+    if (invalid) {
+      setError(invalid);
+      return;
+    }
+
+    setSubmitting(true);
+    const ok = await login(email.trim(), password);
+    setSubmitting(false);
     if (!ok) setError("Invalid email or password. Check your credentials and try again.");
   };
 
@@ -71,7 +82,7 @@ export function LoginPage() {
             </div>
           )}
 
-          <form onSubmit={handleSubmit}>
+          <form onSubmit={handleSubmit} noValidate>
             <div style={{ marginBottom: 20 }}>
               <label className="block font-medium" style={{ fontSize: 11.4, color: "#9ca3af", marginBottom: 7 }}>Admin Email</label>
               <div className="relative">
@@ -104,10 +115,11 @@ export function LoginPage() {
 
             <button
               type="submit"
+              disabled={submitting}
               className="w-full font-semibold text-white transition-opacity hover:opacity-90"
-              style={{ padding: 12, borderRadius: 13, border: "none", cursor: "pointer", background: "linear-gradient(172deg, #6363f1 0%, #8b5cf6 100%)", boxShadow: "0 3px 8px rgba(99,102,241,0.4)", fontSize: 13, fontFamily: "inherit" }}
+              style={{ padding: 12, borderRadius: 13, border: "none", cursor: submitting ? "wait" : "pointer", opacity: submitting ? 0.7 : 1, background: "linear-gradient(172deg, #6363f1 0%, #8b5cf6 100%)", boxShadow: "0 3px 8px rgba(99,102,241,0.4)", fontSize: 13, fontFamily: "inherit" }}
             >
-              Sign In to Admin Console
+              {submitting ? "Signing in…" : "Sign In to Admin Console"}
             </button>
           </form>
         </div>

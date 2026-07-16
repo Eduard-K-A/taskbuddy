@@ -218,13 +218,16 @@ export function DashboardPage({ onNavigate }: DashboardPageProps) {
               />
               <YAxis hide />
               <Tooltip
+                cursor={{ fill: "var(--track-bg)", radius: 4 }}
                 contentStyle={{
-                  background: "#1a1d27",
-                  border: "1px solid rgba(255,255,255,0.08)",
+                  background: "var(--panel-bg)",
+                  border: "1px solid var(--panel-border)",
                   borderRadius: 8,
-                  color: "white",
-                  fontSize: 11,
+                  boxShadow: "0 8px 24px rgba(0,0,0,0.25)",
+                  padding: "8px 12px",
                 }}
+                labelStyle={{ color: "var(--text-muted)", fontSize: 10, marginBottom: 2 }}
+                itemStyle={{ color: "var(--text-white)", fontSize: 12, fontWeight: 600, padding: 0 }}
                 formatter={(v: number) => [formatCurrency(v), "Revenue"]}
               />
               <Bar dataKey="value" fill="#6366f1" radius={[4, 4, 0, 0]} />

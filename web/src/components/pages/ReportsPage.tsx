@@ -87,7 +87,16 @@ export function ReportsPage() {
               <XAxis dataKey="month" tick={{ fill: "#6b7280", fontSize: 10 }} axisLine={false} tickLine={false} />
               <YAxis hide />
               <Tooltip
-                contentStyle={{ background: "#1a1d27", border: "1px solid rgba(255,255,255,0.08)", borderRadius: 8, color: "white", fontSize: 11 }}
+                cursor={{ stroke: "var(--indigo)", strokeWidth: 1, strokeDasharray: "3 3" }}
+                contentStyle={{
+                  background: "var(--panel-bg)",
+                  border: "1px solid var(--panel-border)",
+                  borderRadius: 8,
+                  boxShadow: "0 8px 24px rgba(0,0,0,0.25)",
+                  padding: "8px 12px",
+                }}
+                labelStyle={{ color: "var(--text-muted)", fontSize: 10, marginBottom: 2 }}
+                itemStyle={{ color: "var(--text-white)", fontSize: 12, fontWeight: 600, padding: 0 }}
                 formatter={(v: number) => [formatCurrency(v), "Revenue"]}
               />
               <Area type="monotone" dataKey="value" stroke="#6366f1" fill="url(#rev)" strokeWidth={2} />
@@ -193,7 +202,16 @@ export function ReportsPage() {
               <XAxis dataKey="month" tick={{ fill: "#6b7280", fontSize: 10 }} axisLine={false} tickLine={false} />
               <YAxis hide />
               <Tooltip
-                contentStyle={{ background: "#1a1d27", border: "1px solid rgba(255,255,255,0.08)", borderRadius: 8, color: "white", fontSize: 11 }}
+                cursor={{ fill: "var(--track-bg)", radius: 4 }}
+                contentStyle={{
+                  background: "var(--panel-bg)",
+                  border: "1px solid var(--panel-border)",
+                  borderRadius: 8,
+                  boxShadow: "0 8px 24px rgba(0,0,0,0.25)",
+                  padding: "8px 12px",
+                }}
+                labelStyle={{ color: "var(--text-muted)", fontSize: 10, marginBottom: 2 }}
+                itemStyle={{ color: "var(--text-white)", fontSize: 12, fontWeight: 600, padding: 0 }}
                 formatter={(v: number) => [v, "Bookings"]}
               />
               <Bar dataKey="value" fill="#8b5cf6" radius={[4, 4, 0, 0]} />

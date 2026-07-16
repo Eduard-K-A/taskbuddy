@@ -3,6 +3,17 @@
 import { useState } from "react";
 import { Save, Bell, Shield, Globe, Palette, Database, Check, AlertCircle } from "lucide-react";
 import { useApp, type ConsoleSettings } from "@/context/AppContext";
+import { validateEmail, validateName, validatePasswordChange } from "@/lib/validation";
+
+interface FieldErrors {
+  name?: string;
+  email?: string;
+  currentPassword?: string;
+  newPassword?: string;
+  confirmPassword?: string;
+  platformName?: string;
+  supportEmail?: string;
+}
 
 const Section = ({ title, icon, children }: { title: string; icon: React.ReactNode; children: React.ReactNode }) => (
   <div className="rounded-xl p-5 mb-4" style={{ background: "var(--card-bg)", border: "1px solid var(--card-border)" }}>
@@ -38,6 +49,7 @@ function Field({
   onChange,
   disabled = false,
   placeholder,
+  error,
 }: {
   label: string;
   value: string;
@@ -45,6 +57,7 @@ function Field({
   onChange?: (v: string) => void;
   disabled?: boolean;
   placeholder?: string;
+  error?: string;
 }) {
   return (
     <div className="mb-3">
@@ -58,8 +71,11 @@ function Field({
         placeholder={placeholder}
         onChange={(e) => onChange?.(e.target.value)}
         className="w-full text-white outline-none"
-        style={{ background: "var(--input-bg)", border: "1px solid var(--border-md)", borderRadius: 11, padding: "9px 13px", fontSize: 12, fontFamily: "inherit", opacity: disabled ? 0.55 : 1, cursor: disabled ? "not-allowed" : "text" }}
+        style={{ background: "var(--input-bg)", border: `1px solid ${error ? "rgba(239,68,68,0.5)" : "var(--border-md)"}`, borderRadius: 11, padding: "9px 13px", fontSize: 12, fontFamily: "inherit", opacity: disabled ? 0.55 : 1, cursor: disabled ? "not-allowed" : "text" }}
       />
+      {error && (
+        <div style={{ fontSize: 10.5, color: "var(--danger-text)", marginTop: 4 }}>{error}</div>
+      )}
     </div>
   );
 }
@@ -76,8 +92,10 @@ export function SettingsPage() {
   const [email, setEmail] = useState(adminProfile.email);
   const [currentPassword, setCurrentPassword] = useState("");
   const [newPassword, setNewPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
   const [saved, setSaved] = useState(false);
   const [error, setError] = useState("");
+  const [fieldErrors, setFieldErrors] = useState<FieldErrors>({});
 
   const setToggle = (key: keyof ConsoleSettings) => (val: boolean) =>
     updateSettings({ [key]: val });
@@ -85,26 +103,37 @@ export function SettingsPage() {
   const handleSave = async () => {
     setError("");
 
-    // Password change is optional — only attempted when a new password is set.
+    // Validate everything up front so all problems show at once.
+    const errors: FieldErrors = {
+      name: validateName(name, "Display name") ?? undefined,
+      email: validateEmail(email, "Email address") ?? undefined,
+      platformName: validateName(settings.platformName, "Platform name") ?? undefined,
+      supportEmail: validateEmail(settings.supportEmail, "Support email") ?? undefined,
+    };
+    // Password change is optional — only validated when a new password is set.
     if (newPassword) {
-      if (!currentPassword) {
-        setError("Enter your current password to set a new one.");
-        return;
-      }
-      if (newPassword.length < 8) {
-        setError("New password must be at least 8 characters.");
-        return;
-      }
+      Object.assign(errors, validatePasswordChange(currentPassword, newPassword, confirmPassword));
+    }
+    const hasErrors = Object.values(errors).some(Boolean);
+    setFieldErrors(hasErrors ? errors : {});
+    if (hasErrors) {
+      setError("Please fix the highlighted fields.");
+      return;
+    }
+
+    if (newPassword) {
       const ok = await changePassword(currentPassword, newPassword);
       if (!ok) {
         setError("Current password is incorrect.");
+        setFieldErrors({ currentPassword: "Current password is incorrect." });
         return;
       }
       setCurrentPassword("");
       setNewPassword("");
+      setConfirmPassword("");
     }
 
-    updateAdminProfile({ name, email });
+    updateAdminProfile({ name: name.trim(), email: email.trim() });
     setSaved(true);
     setTimeout(() => setSaved(false), 2500);
   };
@@ -130,10 +159,11 @@ export function SettingsPage() {
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
         <div>
           <Section title="Account" icon={<Shield size={15} />}>
-            <Field label="Display Name" value={name} onChange={setName} />
-            <Field label="Email Address" value={email} type="email" onChange={setEmail} />
-            <Field label="Current Password" value={currentPassword} type="password" onChange={setCurrentPassword} placeholder="Required to change password" />
-            <Field label="New Password" value={newPassword} type="password" onChange={setNewPassword} placeholder="Min. 8 characters" />
+            <Field label="Display Name" value={name} onChange={setName} error={fieldErrors.name} />
+            <Field label="Email Address" value={email} type="email" onChange={setEmail} error={fieldErrors.email} />
+            <Field label="Current Password" value={currentPassword} type="password" onChange={setCurrentPassword} placeholder="Required to change password" error={fieldErrors.currentPassword} />
+            <Field label="New Password" value={newPassword} type="password" onChange={setNewPassword} placeholder="Min. 8 characters, letters & numbers" error={fieldErrors.newPassword} />
+            <Field label="Confirm New Password" value={confirmPassword} type="password" onChange={setConfirmPassword} placeholder="Re-enter the new password" error={fieldErrors.confirmPassword} />
           </Section>
           <Section title="Notifications" icon={<Bell size={15} />}>
             <Toggle label="Email alerts for new verifications" value={settings.emailAlerts} onChange={setToggle("emailAlerts")} />
@@ -144,8 +174,8 @@ export function SettingsPage() {
         </div>
         <div>
           <Section title="Platform" icon={<Globe size={15} />}>
-            <Field label="Platform Name" value={settings.platformName} onChange={(v) => updateSettings({ platformName: v })} />
-            <Field label="Support Email" value={settings.supportEmail} type="email" onChange={(v) => updateSettings({ supportEmail: v })} />
+            <Field label="Platform Name" value={settings.platformName} onChange={(v) => updateSettings({ platformName: v })} error={fieldErrors.platformName} />
+            <Field label="Support Email" value={settings.supportEmail} type="email" onChange={(v) => updateSettings({ supportEmail: v })} error={fieldErrors.supportEmail} />
             <Field label="Base Currency" value="PHP (₱)" disabled />
             <Toggle label="Maintenance Mode" sub="Temporarily disable user access" value={settings.maintenanceMode} onChange={setToggle("maintenanceMode")} />
           </Section>
