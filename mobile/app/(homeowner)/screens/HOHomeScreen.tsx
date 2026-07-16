@@ -1,30 +1,47 @@
+/**
+ * HOHomeScreen.tsx
+ *
+ * Figma Source: "HO - Main Dashboard" (id: 36:449)
+ *
+ * Design:
+ * - Dark teal hero (264px) with greeting, wallet balance card
+ * - Body: #F1F5F9 background
+ * - "Book a Service" horizontal scroll of service cards
+ * - "Active Jobs" list of job cards
+ * - 5-tab bottom nav (see HOBottomNavBar)
+ */
+
 import React from 'react';
 import {
-  SafeAreaView,
   ScrollView,
   StyleSheet,
   Text,
   TouchableOpacity,
   View,
 } from 'react-native';
+import { Colors, Radii, Shadows, Sizes, Spacing } from '../../../src/constants/designTokens';
+import { HOScreen } from '../../../src/types/navigation';
 
-const services = [
-  { label: 'General Cleaning' },
-  { label: 'Painting' },
-  { label: 'Deep Cleaning' },
-  { label: 'Moving' },
-  { label: 'Plumbing' },
+const SERVICES = [
+  { label: 'General\nCleaning', icon: '🧹', color: '#E8F5E9' },
+  { label: 'Painting', icon: '🎨', color: '#FFF3E0' },
+  { label: 'Deep\nCleaning', icon: '🫧', color: '#E3F2FD' },
+  { label: 'Moving', icon: '📦', color: '#F3E5F5' },
+  { label: 'Plumbing', icon: '🔧', color: '#E8EAF6' },
+  { label: 'Electrical', icon: '⚡', color: '#FFF8E1' },
 ];
 
-const jobs = [
+const JOBS = [
   {
     title: 'Home Deep Clean',
     location: 'Brgy. Sabang, Lipa City, Batangas',
     amount: '₱850',
     status: 'Pending',
-    statusColor: '#f59e0b',
+    statusColor: '#F59E0B',
+    statusBg: '#FFF7ED',
     priority: 'High Priority',
-    priorityColor: '#fca5a5',
+    priorityBg: '#FEE2E2',
+    priorityColor: '#EF4444',
     age: '45d ago',
   },
   {
@@ -32,412 +49,270 @@ const jobs = [
     location: '1962 J.P. Laurel National High',
     amount: '₱685',
     status: 'In Progress',
-    statusColor: '#34d399',
+    statusColor: '#22C55E',
+    statusBg: '#F0FDF4',
     priority: 'Medium Priority',
-    priorityColor: '#fde68a',
+    priorityBg: '#FEF9C3',
+    priorityColor: '#CA8A04',
     age: '46d ago',
   },
 ];
 
-export default function HOHomeScreen() {
+interface HOHomeScreenProps {
+  onNavigate: (screen: HOScreen) => void;
+}
+
+export default function HOHomeScreen({ onNavigate }: HOHomeScreenProps) {
   return (
-    <SafeAreaView style={styles.safeArea}>
-      <ScrollView contentContainerStyle={styles.container} showsVerticalScrollIndicator={false}>
-        <View style={styles.headerRow}>
+    <View style={styles.screen}>
+      {/* Hero Header */}
+      <View style={styles.hero}>
+        {/* Top row */}
+        <View style={styles.heroTopRow}>
           <View>
             <Text style={styles.greeting}>Good morning!</Text>
             <Text style={styles.userName}>Alex Chen</Text>
           </View>
-          <View style={styles.headerActions}>
-            <View style={styles.badgeIcon}>
-              <Text style={styles.badgeText}>2</Text>
-            </View>
-            <View style={styles.avatarCircle}>
+          <View style={styles.heroActions}>
+            <TouchableOpacity
+              style={styles.notifBtn}
+              onPress={() => onNavigate('Notifications')}
+              activeOpacity={0.8}
+            >
+              <Text style={styles.notifIcon}>🔔</Text>
+              <View style={styles.notifBadge}><Text style={styles.notifBadgeText}>2</Text></View>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={styles.avatarCircle}
+              onPress={() => onNavigate('Profile')}
+              activeOpacity={0.8}
+            >
               <Text style={styles.avatarText}>AC</Text>
-            </View>
+            </TouchableOpacity>
           </View>
         </View>
 
+        {/* Wallet card inside hero */}
         <View style={styles.walletCard}>
-          <View style={styles.walletHeader}>
+          <View style={styles.walletRow}>
             <View>
               <Text style={styles.walletLabel}>Wallet Balance</Text>
               <Text style={styles.walletAmount}>₱250.00</Text>
             </View>
-            <TouchableOpacity style={styles.addButton} activeOpacity={0.8}>
-              <Text style={styles.addButtonText}>+ Add</Text>
+            <TouchableOpacity
+              style={styles.addBtn}
+              onPress={() => onNavigate('Wallet')}
+              activeOpacity={0.8}
+            >
+              <Text style={styles.addBtnText}>+ Add</Text>
             </TouchableOpacity>
           </View>
 
-          <View style={styles.walletStatusRow}>
-            <View style={styles.statusChip}>
-              <View style={[styles.dot, { backgroundColor: '#f59e0b' }]} />
-              <Text style={styles.statusText}>1 pending</Text>
-            </View>
-            <View style={styles.statusChip}>
-              <View style={[styles.dot, { backgroundColor: '#22c55e' }]} />
-              <Text style={styles.statusText}>1 active</Text>
-            </View>
-            <View style={styles.statusChip}>
-              <View style={[styles.dot, { backgroundColor: '#71c7ff' }]} />
-              <Text style={styles.statusText}>2 done</Text>
-            </View>
+          <View style={styles.statusRow}>
+            {[
+              { dot: '#F59E0B', label: '1 pending' },
+              { dot: '#22C55E', label: '1 active' },
+              { dot: '#71C7FF', label: '2 done' },
+            ].map((s) => (
+              <View key={s.label} style={styles.statusChip}>
+                <View style={[styles.statusDot, { backgroundColor: s.dot }]} />
+                <Text style={styles.statusText}>{s.label}</Text>
+              </View>
+            ))}
           </View>
 
           <View style={styles.locationRow}>
-            <Text style={styles.locationText}>Brgy. Sampaguita, ...</Text>
-            <Text style={styles.radiusText}>Search Radius 5 mi</Text>
+            <Text style={styles.locationText}>📍 Brgy. Sampaguita, ...</Text>
+            <Text style={styles.radiusText}>5 mi radius</Text>
           </View>
         </View>
+      </View>
 
-        <View style={styles.sectionHeader}>
-          <Text style={styles.sectionTitle}>Book a Service</Text>
-        </View>
-
-        <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.serviceScroll}>
-          {services.map((service) => (
-            <View key={service.label} style={styles.serviceCard}>
-              <View style={styles.serviceIcon} />
-              <Text style={styles.serviceLabel}>{service.label}</Text>
-            </View>
+      {/* Body */}
+      <ScrollView
+        style={styles.body}
+        contentContainerStyle={styles.bodyContent}
+        showsVerticalScrollIndicator={false}
+      >
+        {/* Book a Service */}
+        <Text style={styles.sectionTitle}>Book a Service</Text>
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          style={styles.servicesScroll}
+          contentContainerStyle={styles.servicesContent}
+        >
+          {SERVICES.map((svc) => (
+            <TouchableOpacity
+              key={svc.label}
+              style={[styles.serviceCard, { backgroundColor: svc.color }]}
+              onPress={() => onNavigate('Create Job')}
+              activeOpacity={0.85}
+            >
+              <Text style={styles.serviceIcon}>{svc.icon}</Text>
+              <Text style={styles.serviceLabel}>{svc.label}</Text>
+            </TouchableOpacity>
           ))}
         </ScrollView>
 
-        <View style={styles.sectionHeaderWithAction}>
+        {/* Active Jobs */}
+        <View style={styles.sectionHeaderRow}>
           <Text style={styles.sectionTitle}>Active Jobs</Text>
-          <Text style={styles.seeAll}>See all</Text>
+          <TouchableOpacity onPress={() => onNavigate('My Jobs')}>
+            <Text style={styles.seeAll}>See all</Text>
+          </TouchableOpacity>
         </View>
 
-        {jobs.map((job) => (
-          <View key={job.title} style={styles.jobCard}>
+        {JOBS.map((job) => (
+          <TouchableOpacity
+            key={job.title}
+            style={styles.jobCard}
+            onPress={() => onNavigate('Job Detail')}
+            activeOpacity={0.9}
+          >
             <View style={styles.jobCardHeader}>
               <Text style={styles.jobTitle}>{job.title}</Text>
-              <View style={[styles.statusPill, { backgroundColor: `${job.statusColor}22` }]}> 
+              <View style={[styles.statusPill, { backgroundColor: job.statusBg }]}>
                 <Text style={[styles.statusPillText, { color: job.statusColor }]}>{job.status}</Text>
               </View>
             </View>
-            <Text style={styles.jobLocation}>{job.location}</Text>
+            <Text style={styles.jobLocation}>📍 {job.location}</Text>
             <View style={styles.jobMetaRow}>
-              <View style={[styles.priorityChip, { backgroundColor: job.priorityColor }]}>
-                <Text style={styles.priorityText}>{job.priority}</Text>
+              <View style={[styles.priorityChip, { backgroundColor: job.priorityBg }]}>
+                <Text style={[styles.priorityText, { color: job.priorityColor }]}>{job.priority}</Text>
               </View>
               <Text style={styles.ageText}>{job.age}</Text>
             </View>
-            <Text style={styles.jobAmount}>{job.amount}</Text>
-          </View>
+            <View style={styles.jobFooter}>
+              <Text style={styles.jobAmount}>{job.amount}</Text>
+              <TouchableOpacity
+                style={styles.viewBtn}
+                onPress={() => onNavigate('Job Detail')}
+                activeOpacity={0.8}
+              >
+                <Text style={styles.viewBtnText}>View Job →</Text>
+              </TouchableOpacity>
+            </View>
+          </TouchableOpacity>
         ))}
 
-        <View style={styles.bottomNav}>
-          <TouchableOpacity style={[styles.navButton, styles.navButtonActive]} activeOpacity={0.8}>
-            <Text style={[styles.navButtonText, styles.navButtonTextActive]}>Home</Text>
-          </TouchableOpacity>
-          <TouchableOpacity style={styles.navButton} activeOpacity={0.8}>
-            <Text style={styles.navButtonText}>My Jobs</Text>
-          </TouchableOpacity>
-          <TouchableOpacity style={[styles.navButton, styles.floatingButton]} activeOpacity={0.8}>
-            <Text style={styles.floatingButtonText}>+</Text>
-          </TouchableOpacity>
-          <TouchableOpacity style={styles.navButton} activeOpacity={0.8}>
-            <Text style={styles.navButtonText}>Wallet</Text>
-          </TouchableOpacity>
-          <TouchableOpacity style={styles.navButton} activeOpacity={0.8}>
-            <Text style={styles.navButtonText}>Profile</Text>
-          </TouchableOpacity>
-        </View>
+        <View style={{ height: 20 }} />
       </ScrollView>
-    </SafeAreaView>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
-  safeArea: {
-    flex: 1,
-    backgroundColor: '#eaf3fb',
+  screen: { flex: 1, backgroundColor: Colors.background },
+
+  // Hero
+  hero: {
+    backgroundColor: Colors.brandDark,
+    paddingTop: Sizes.statusBarHeight,
+    paddingHorizontal: Spacing.screenH,
+    paddingBottom: 0,
+    borderBottomLeftRadius: 28,
+    borderBottomRightRadius: 28,
   },
-  container: {
-    paddingHorizontal: 20,
-    paddingTop: 18,
-    paddingBottom: 24,
-  },
-  headerRow: {
+  heroTopRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 20,
+    paddingTop: 12,
+    paddingBottom: 16,
   },
-  greeting: {
-    color: '#334155',
-    fontSize: 15,
+  greeting: { color: 'rgba(255,255,255,0.7)', fontSize: 14, fontFamily: 'Inter', fontWeight: '500' },
+  userName: { color: Colors.white, fontSize: 22, fontWeight: '800', fontFamily: 'Inter', marginTop: 2 },
+  heroActions: { flexDirection: 'row', alignItems: 'center', gap: 12 },
+  notifBtn: {
+    width: 40, height: 40, borderRadius: 12,
+    backgroundColor: 'rgba(255,255,255,0.15)',
+    alignItems: 'center', justifyContent: 'center', position: 'relative',
   },
-  userName: {
-    color: '#0f172a',
-    fontSize: 24,
-    fontWeight: '800',
-    marginTop: 4,
+  notifIcon: { fontSize: 18 },
+  notifBadge: {
+    position: 'absolute', top: 6, right: 6,
+    width: 16, height: 16, borderRadius: 8,
+    backgroundColor: '#EF4444', alignItems: 'center', justifyContent: 'center',
   },
-  headerActions: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 12,
-  },
-  badgeIcon: {
-    width: 36,
-    height: 36,
-    borderRadius: 14,
-    backgroundColor: '#ffffff',
-    justifyContent: 'center',
-    alignItems: 'center',
-    shadowColor: '#000000',
-    shadowOpacity: 0.08,
-    shadowOffset: { width: 0, height: 2 },
-    shadowRadius: 6,
-    elevation: 3,
-  },
-  badgeText: {
-    fontSize: 12,
-    fontWeight: '700',
-    color: '#ef4444',
-  },
+  notifBadgeText: { color: Colors.white, fontSize: 10, fontWeight: '700' },
   avatarCircle: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    backgroundColor: '#2563eb',
-    justifyContent: 'center',
-    alignItems: 'center',
+    width: 40, height: 40, borderRadius: 12,
+    backgroundColor: Colors.brandCyan,
+    alignItems: 'center', justifyContent: 'center',
   },
-  avatarText: {
-    color: '#ffffff',
-    fontWeight: '700',
-  },
+  avatarText: { color: Colors.white, fontWeight: '700', fontSize: 14, fontFamily: 'Inter' },
+
+  // Wallet card (inside hero)
   walletCard: {
-    marginBottom: 20,
-    borderRadius: 24,
-    backgroundColor: '#ffffff',
-    padding: 22,
-    shadowColor: '#0f172a',
-    shadowOpacity: 0.05,
-    shadowOffset: { width: 0, height: 6 },
-    shadowRadius: 18,
-    elevation: 4,
+    backgroundColor: Colors.white,
+    borderRadius: Radii.card,
+    padding: 20,
+    marginBottom: -20,
+    ...Shadows.card,
   },
-  walletHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 18,
+  walletRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14 },
+  walletLabel: { color: Colors.muted, fontSize: 13, fontFamily: 'Inter', marginBottom: 2 },
+  walletAmount: { color: Colors.brandDark, fontSize: 32, fontWeight: '800', fontFamily: 'Inter' },
+  addBtn: {
+    backgroundColor: Colors.brandDark, borderRadius: 16,
+    paddingHorizontal: 16, paddingVertical: 10,
   },
-  walletLabel: {
-    color: '#94a3b8',
-    fontSize: 13,
-    marginBottom: 4,
-  },
-  walletAmount: {
-    color: '#0f172a',
-    fontSize: 36,
-    fontWeight: '800',
-  },
-  addButton: {
-    backgroundColor: '#0f172a',
-    borderRadius: 16,
-    paddingHorizontal: 16,
-    paddingVertical: 10,
-  },
-  addButtonText: {
-    color: '#ffffff',
-    fontWeight: '700',
-  },
-  walletStatusRow: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 10,
-    marginBottom: 16,
-  },
+  addBtnText: { color: Colors.white, fontWeight: '700', fontFamily: 'Inter', fontSize: 13 },
+
+  statusRow: { flexDirection: 'row', gap: 8, marginBottom: 14, flexWrap: 'wrap' },
   statusChip: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#f8fafc',
-    borderRadius: 16,
-    paddingHorizontal: 10,
-    paddingVertical: 6,
+    flexDirection: 'row', alignItems: 'center',
+    backgroundColor: Colors.backgroundAlt,
+    borderRadius: 16, paddingHorizontal: 10, paddingVertical: 5,
   },
-  dot: {
-    width: 8,
-    height: 8,
-    borderRadius: 4,
-    marginRight: 8,
-  },
-  statusText: {
-    color: '#475569',
-    fontSize: 12,
-  },
+  statusDot: { width: 8, height: 8, borderRadius: 4, marginRight: 6 },
+  statusText: { color: Colors.slate, fontSize: 12, fontFamily: 'Inter' },
+
   locationRow: {
-    borderTopWidth: 1,
-    borderTopColor: '#e2e8f0',
-    paddingTop: 14,
-    flexDirection: 'row',
-    justifyContent: 'space-between',
+    flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center',
+    borderTopWidth: 1, borderTopColor: 'rgba(144,153,184,0.2)', paddingTop: 12,
   },
-  locationText: {
-    color: '#475569',
-    fontSize: 13,
-  },
-  radiusText: {
-    color: '#0f172a',
-    fontWeight: '700',
-    fontSize: 13,
-  },
-  sectionHeader: {
-    marginBottom: 14,
-  },
-  sectionHeaderWithAction: {
-    marginTop: 10,
-    marginBottom: 14,
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-  },
-  sectionTitle: {
-    color: '#0f172a',
-    fontSize: 18,
-    fontWeight: '800',
-  },
-  seeAll: {
-    color: '#2563eb',
-    fontWeight: '700',
-  },
-  serviceScroll: {
-    marginBottom: 24,
-  },
+  locationText: { color: Colors.slate, fontSize: 12, fontFamily: 'Inter' },
+  radiusText: { color: Colors.brandTeal, fontSize: 12, fontWeight: '700', fontFamily: 'Inter' },
+
+  // Body
+  body: { flex: 1 },
+  bodyContent: { paddingHorizontal: Spacing.screenH, paddingTop: 32, paddingBottom: 20 },
+
+  sectionTitle: { color: Colors.brandDark, fontSize: 18, fontWeight: '800', fontFamily: 'Inter', marginBottom: 14 },
+  sectionHeaderRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14, marginTop: 24 },
+  seeAll: { color: Colors.brandTeal, fontSize: 13, fontWeight: '700', fontFamily: 'Inter' },
+
+  servicesScroll: { marginBottom: 0 },
+  servicesContent: { paddingRight: Spacing.screenH },
   serviceCard: {
-    width: 118,
-    height: 118,
-    borderRadius: 22,
-    backgroundColor: '#ffffff',
-    marginRight: 14,
-    padding: 16,
-    justifyContent: 'space-between',
-    shadowColor: '#0f172a',
-    shadowOpacity: 0.05,
-    shadowOffset: { width: 0, height: 8 },
-    shadowRadius: 20,
-    elevation: 3,
+    width: 100, height: 100, borderRadius: 20,
+    marginRight: 12, padding: 14,
+    justifyContent: 'space-between', alignItems: 'flex-start',
+    ...Shadows.card,
   },
-  serviceIcon: {
-    width: 34,
-    height: 34,
-    borderRadius: 12,
-    backgroundColor: '#e0f2fe',
-  },
-  serviceLabel: {
-    color: '#0f172a',
-    fontWeight: '700',
-    fontSize: 14,
-  },
+  serviceIcon: { fontSize: 28 },
+  serviceLabel: { fontSize: 12, fontWeight: '700', color: Colors.brandDark, fontFamily: 'Inter', lineHeight: 16 },
+
   jobCard: {
-    backgroundColor: '#ffffff',
-    borderRadius: 24,
-    padding: 18,
-    marginBottom: 16,
-    shadowColor: '#0f172a',
-    shadowOpacity: 0.05,
-    shadowOffset: { width: 0, height: 8 },
-    shadowRadius: 18,
-    elevation: 3,
+    backgroundColor: Colors.white, borderRadius: Radii.card,
+    padding: 18, marginBottom: 14, ...Shadows.card,
   },
-  jobCardHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 10,
+  jobCardHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 },
+  jobTitle: { color: Colors.brandDark, fontSize: 16, fontWeight: '700', fontFamily: 'Inter', flex: 1, marginRight: 10 },
+  statusPill: { borderRadius: 999, paddingHorizontal: 10, paddingVertical: 4 },
+  statusPillText: { fontSize: 12, fontWeight: '600', fontFamily: 'Inter' },
+  jobLocation: { color: Colors.slate, fontSize: 12, fontFamily: 'Inter', marginBottom: 12 },
+  jobMetaRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 14 },
+  priorityChip: { borderRadius: 16, paddingHorizontal: 10, paddingVertical: 4 },
+  priorityText: { fontSize: 12, fontWeight: '600', fontFamily: 'Inter' },
+  ageText: { color: Colors.slate, fontSize: 12, fontFamily: 'Inter' },
+  jobFooter: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
+  jobAmount: { color: Colors.brandDark, fontSize: 22, fontWeight: '800', fontFamily: 'Inter' },
+  viewBtn: {
+    backgroundColor: Colors.brandTeal, borderRadius: 14,
+    paddingHorizontal: 14, paddingVertical: 8,
   },
-  jobTitle: {
-    color: '#0f172a',
-    fontSize: 16,
-    fontWeight: '800',
-    flex: 1,
-    marginRight: 12,
-  },
-  statusPill: {
-    borderRadius: 999,
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-  },
-  statusPillText: {
-    fontSize: 12,
-    fontWeight: '700',
-  },
-  jobLocation: {
-    color: '#64748b',
-    fontSize: 13,
-    marginBottom: 14,
-  },
-  jobMetaRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    marginBottom: 18,
-  },
-  priorityChip: {
-    borderRadius: 16,
-    paddingHorizontal: 10,
-    paddingVertical: 6,
-  },
-  priorityText: {
-    color: '#0f172a',
-    fontSize: 12,
-    fontWeight: '700',
-  },
-  ageText: {
-    color: '#64748b',
-    fontSize: 12,
-  },
-  jobAmount: {
-    color: '#0f172a',
-    fontWeight: '800',
-    fontSize: 22,
-  },
-  bottomNav: {
-    marginTop: 10,
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-  },
-  navButton: {
-    flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingVertical: 12,
-    borderRadius: 16,
-    marginHorizontal: 4,
-    backgroundColor: '#ffffff',
-    shadowColor: '#0f172a',
-    shadowOpacity: 0.04,
-    shadowOffset: { width: 0, height: 4 },
-    shadowRadius: 10,
-    elevation: 2,
-  },
-  navButtonActive: {
-    backgroundColor: '#2563eb',
-  },
-  navButtonText: {
-    color: '#475569',
-    fontSize: 12,
-    fontWeight: '700',
-  },
-  navButtonTextActive: {
-    color: '#ffffff',
-  },
-  floatingButton: {
-    width: 52,
-    height: 52,
-    borderRadius: 26,
-    backgroundColor: '#0f172a',
-    marginHorizontal: 4,
-  },
-  floatingButtonText: {
-    color: '#ffffff',
-    fontSize: 24,
-    fontWeight: '800',
-  },
+  viewBtnText: { color: Colors.white, fontSize: 12, fontWeight: '700', fontFamily: 'Inter' },
 });

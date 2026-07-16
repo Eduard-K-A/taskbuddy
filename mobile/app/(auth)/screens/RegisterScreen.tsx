@@ -1,6 +1,24 @@
-import React from 'react';
+/**
+ * RegisterScreen.tsx
+ *
+ * Figma Source: "Sign Up (Create Account) Screen" (id: 80:572)
+ *
+ * Design:
+ * - bg: #F7F7F7 with dark teal vector shapes at top
+ * - "Create account" — Roboto 700 30px #1E1E1E
+ * - "Let's get started!" — Roboto 400 13px #757575
+ * - Name, Email, Password, Confirm Password inputs
+ * - "Sign Up" primary button (teal, radius 24)
+ * - "or" divider
+ * - "Continue with Google" outline button
+ * - Dot progress indicators (step 1 of 4)
+ */
+
+import React, { useState } from 'react';
 import {
-  SafeAreaView,
+  KeyboardAvoidingView,
+  Platform,
+  Pressable,
   ScrollView,
   StyleSheet,
   Text,
@@ -9,263 +27,271 @@ import {
   View,
 } from 'react-native';
 
-export default function RegisterScreen() {
+const C = {
+  brandDark: '#063D4D',
+  brandTeal: '#096E8B',
+  white: '#FFFFFF',
+  bg: '#F8FAFC',
+  muted: '#9099B8',
+  dark: '#1E1E1E',
+  slate: '#757575',
+  mutedBorder: 'rgba(144,153,184,0.3)',
+} as const;
+
+interface RegisterScreenProps {
+  onSignUp: () => void;
+  onLogin: () => void;
+}
+
+interface InputProps {
+  label: string;
+  placeholder: string;
+  value: string;
+  onChangeText: (v: string) => void;
+  secureTextEntry?: boolean;
+  keyboardType?: 'default' | 'email-address';
+}
+
+function FormInput({ label, placeholder, value, onChangeText, secureTextEntry, keyboardType }: InputProps) {
+  const [focused, setFocused] = useState(false);
   return (
-    <SafeAreaView style={styles.safeArea}>
-      <ScrollView contentContainerStyle={styles.container} showsVerticalScrollIndicator={false}>
-        <View style={styles.topRow}>
-          <Text style={styles.backArrow}>←</Text>
-        </View>
+    <View style={styles.inputGroup}>
+      <Text style={styles.inputLabel}>{label}</Text>
+      <View style={[styles.inputBox, focused && styles.inputBoxFocused]}>
+        <TextInput
+          style={styles.inputText}
+          placeholder={placeholder}
+          placeholderTextColor={C.muted}
+          value={value}
+          onChangeText={onChangeText}
+          secureTextEntry={secureTextEntry}
+          keyboardType={keyboardType}
+          autoCapitalize="none"
+          autoCorrect={false}
+          onFocus={() => setFocused(true)}
+          onBlur={() => setFocused(false)}
+        />
+      </View>
+    </View>
+  );
+}
 
-        <View style={styles.heroBlock}>
-          <View style={styles.heroIcon}>
-            <View style={styles.heroIconInner} />
+export default function RegisterScreen({ onSignUp, onLogin }: RegisterScreenProps) {
+  const [name, setName] = useState('');
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
+  const [role, setRole] = useState<'homeowner' | 'provider'>('homeowner');
+
+  return (
+    <View style={styles.screen}>
+      {/* Dark teal header bg */}
+      <View style={styles.headerBg} />
+
+      <KeyboardAvoidingView
+        style={styles.flex}
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+      >
+        <ScrollView
+          style={styles.flex}
+          contentContainerStyle={styles.scrollContent}
+          showsVerticalScrollIndicator={false}
+          keyboardShouldPersistTaps="handled"
+        >
+          {/* Top section with back + logo placeholder */}
+          <View style={styles.topSection}>
+            <TouchableOpacity style={styles.backBtn} onPress={onLogin} activeOpacity={0.8}>
+              <Text style={styles.backIcon}>←</Text>
+            </TouchableOpacity>
           </View>
-          <Text style={styles.logoTitle}>TaskBuddy</Text>
-          <Text style={styles.logoSubtitle}>Hire with confidence, pay with ease.</Text>
-        </View>
 
-        <View style={styles.formCard}>
-          <Text style={styles.formTitle}>Create Account</Text>
-          <Text style={styles.formSubtitle}>Let's get started!</Text>
+          {/* Form card */}
+          <View style={styles.card}>
+            <Text style={styles.title}>Create account</Text>
+            <Text style={styles.subtitle}>Let's get started!</Text>
 
-          <View style={styles.roleToggleRow}>
-            <View style={[styles.roleButton, styles.roleButtonActive]}>
-              <Text style={[styles.roleButtonText, styles.roleButtonTextActive]}>Homeowner</Text>
+            {/* Role toggle */}
+            <View style={styles.roleRow}>
+              {(['homeowner', 'provider'] as const).map((r) => (
+                <TouchableOpacity
+                  key={r}
+                  style={[styles.roleBtn, role === r && styles.roleBtnActive]}
+                  onPress={() => setRole(r)}
+                  activeOpacity={0.8}
+                >
+                  <Text style={[styles.roleBtnText, role === r && styles.roleBtnTextActive]}>
+                    {r === 'homeowner' ? 'Homeowner' : 'Service Provider'}
+                  </Text>
+                </TouchableOpacity>
+              ))}
             </View>
-            <View style={styles.roleButton}>
-              <Text style={styles.roleButtonText}>Service Provider</Text>
+
+            <FormInput
+              label="Full Name"
+              placeholder="Alex Chen"
+              value={name}
+              onChangeText={setName}
+            />
+            <FormInput
+              label="Email Address"
+              placeholder="alex@example.com"
+              value={email}
+              onChangeText={setEmail}
+              keyboardType="email-address"
+            />
+            <FormInput
+              label="Password"
+              placeholder="••••••••"
+              value={password}
+              onChangeText={setPassword}
+              secureTextEntry
+            />
+            <FormInput
+              label="Confirm Password"
+              placeholder="••••••••"
+              value={confirmPassword}
+              onChangeText={setConfirmPassword}
+              secureTextEntry
+            />
+
+            {/* Sign Up */}
+            <TouchableOpacity style={styles.primaryBtn} onPress={onSignUp} activeOpacity={0.85}>
+              <Text style={styles.primaryBtnText}>Sign Up</Text>
+            </TouchableOpacity>
+
+            {/* Divider */}
+            <View style={styles.dividerRow}>
+              <View style={styles.dividerLine} />
+              <Text style={styles.dividerText}>or</Text>
+              <View style={styles.dividerLine} />
+            </View>
+
+            {/* Google */}
+            <TouchableOpacity style={styles.googleBtn} onPress={onSignUp} activeOpacity={0.85}>
+              <View style={styles.googleIcon}>
+                <Text style={styles.googleIconText}>G</Text>
+              </View>
+              <Text style={styles.googleBtnText}>Continue with Google</Text>
+            </TouchableOpacity>
+
+            {/* Progress dots */}
+            <View style={styles.dotsRow}>
+              {[0, 1, 2, 3].map((i) => (
+                <View key={i} style={[styles.dot, i === 0 && styles.dotActive]} />
+              ))}
             </View>
           </View>
 
-          <View style={styles.inputGroup}>
-            <Text style={styles.inputLabel}>Full Name</Text>
-            <TextInput style={styles.input} placeholder="Alex Chen" placeholderTextColor="#94a3b8" />
+          {/* Sign In link */}
+          <View style={styles.signInRow}>
+            <Text style={styles.signInPrompt}>Already have an account? </Text>
+            <Pressable onPress={onLogin}>
+              <Text style={styles.signInLink}>Sign In</Text>
+            </Pressable>
           </View>
+        </ScrollView>
+      </KeyboardAvoidingView>
 
-          <View style={styles.inputGroup}>
-            <Text style={styles.inputLabel}>Email Address</Text>
-            <TextInput style={styles.input} placeholder="alex@example.com" placeholderTextColor="#94a3b8" keyboardType="email-address" />
-          </View>
-
-          <View style={styles.inputGroup}>
-            <Text style={styles.inputLabel}>Password</Text>
-            <TextInput style={styles.input} placeholder="••••••••" placeholderTextColor="#94a3b8" secureTextEntry />
-          </View>
-
-          <View style={styles.checkboxRow}>
-            <View style={styles.checkbox} />
-            <Text style={styles.checkboxLabel}>
-              I agree with the <Text style={styles.linkText}>Terms & Conditions</Text> and <Text style={styles.linkText}>Privacy Policy</Text>
-            </Text>
-          </View>
-
-          <TouchableOpacity style={styles.primaryButton} activeOpacity={0.9}>
-            <Text style={styles.primaryButtonText}>Sign Up</Text>
-          </TouchableOpacity>
-
-          <View style={styles.dividerRow}>
-            <View style={styles.dividerLine} />
-            <Text style={styles.dividerText}>or</Text>
-            <View style={styles.dividerLine} />
-          </View>
-
-          <TouchableOpacity style={styles.secondaryButton} activeOpacity={0.9}>
-            <Text style={styles.secondaryIcon}>G</Text>
-            <Text style={styles.secondaryButtonText}>Continue with Google</Text>
-          </TouchableOpacity>
-        </View>
-      </ScrollView>
-    </SafeAreaView>
+      {/* Gesture bar */}
+      <View style={styles.gestureWrap} pointerEvents="none">
+        <View style={styles.gestureBar} />
+      </View>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
-  safeArea: {
-    flex: 1,
-    backgroundColor: '#e8f2fb',
+  flex: { flex: 1 },
+  screen: { flex: 1, backgroundColor: C.bg },
+
+  headerBg: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    height: 200,
+    backgroundColor: C.brandDark,
+    borderBottomLeftRadius: 40,
+    borderBottomRightRadius: 40,
   },
-  container: {
-    paddingHorizontal: 20,
-    paddingTop: 20,
-    paddingBottom: 32,
+
+  scrollContent: { paddingTop: 56, paddingHorizontal: 20, paddingBottom: 40 },
+
+  topSection: { marginBottom: 20, flexDirection: 'row' },
+  backBtn: {
+    width: 40, height: 40, borderRadius: 12,
+    backgroundColor: 'rgba(255,255,255,0.2)',
+    alignItems: 'center', justifyContent: 'center',
   },
-  topRow: {
-    marginBottom: 10,
-  },
-  backArrow: {
-    color: '#0f172a',
-    fontSize: 22,
-    fontWeight: '700',
-  },
-  heroBlock: {
-    alignItems: 'center',
-    marginBottom: 28,
-  },
-  heroIcon: {
-    width: 88,
-    height: 88,
-    borderRadius: 32,
-    backgroundColor: '#dbeafe',
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginBottom: 18,
-  },
-  heroIconInner: {
-    width: 44,
-    height: 44,
-    borderRadius: 16,
-    backgroundColor: '#0f172a',
-  },
-  logoTitle: {
-    fontSize: 28,
-    fontWeight: '800',
-    color: '#0f172a',
-    marginBottom: 8,
-  },
-  logoSubtitle: {
-    color: '#475569',
-    fontSize: 14,
-    textAlign: 'center',
-    lineHeight: 20,
-    maxWidth: 260,
-  },
-  formCard: {
-    backgroundColor: '#ffffff',
+  backIcon: { color: C.white, fontSize: 20, fontWeight: '700' },
+
+  card: {
+    backgroundColor: C.white,
     borderRadius: 30,
     padding: 24,
-    shadowColor: '#0f172a',
-    shadowOpacity: 0.06,
+    shadowColor: '#063D4D',
+    shadowOpacity: 0.08,
     shadowOffset: { width: 0, height: 12 },
     shadowRadius: 25,
-    elevation: 4,
+    elevation: 6,
+    marginBottom: 20,
   },
-  formTitle: {
-    color: '#0f172a',
-    fontSize: 24,
-    fontWeight: '800',
-    marginBottom: 4,
+
+  title: { color: C.dark, fontSize: 26, fontWeight: '700', fontFamily: 'Inter', marginBottom: 4 },
+  subtitle: { color: C.slate, fontSize: 13, fontFamily: 'Inter', marginBottom: 20 },
+
+  roleRow: { flexDirection: 'row', gap: 10, marginBottom: 20 },
+  roleBtn: {
+    flex: 1, paddingVertical: 12, borderRadius: 20,
+    borderWidth: 1, borderColor: 'rgba(144,153,184,0.3)',
+    alignItems: 'center', backgroundColor: C.white,
   },
-  formSubtitle: {
-    color: '#64748b',
-    fontSize: 14,
-    marginBottom: 22,
+  roleBtnActive: { backgroundColor: C.brandDark, borderColor: C.brandDark },
+  roleBtnText: { fontFamily: 'Inter', fontSize: 13, fontWeight: '600', color: C.muted },
+  roleBtnTextActive: { color: C.white },
+
+  inputGroup: { marginBottom: 16 },
+  inputLabel: { fontFamily: 'Inter', fontSize: 13, fontWeight: '600', color: C.brandDark, marginBottom: 6 },
+  inputBox: {
+    backgroundColor: '#F8FAFC', borderRadius: 12, paddingHorizontal: 16, paddingVertical: 13,
+    borderWidth: 1, borderColor: C.mutedBorder,
   },
-  roleToggleRow: {
-    flexDirection: 'row',
-    gap: 12,
-    marginBottom: 22,
+  inputBoxFocused: { borderColor: C.brandTeal },
+  inputText: { fontFamily: 'Inter', fontSize: 15, color: '#0F172A', padding: 0 },
+
+  primaryBtn: {
+    backgroundColor: C.brandTeal, borderRadius: 24, paddingVertical: 15,
+    alignItems: 'center', marginTop: 4, marginBottom: 18,
+    shadowColor: C.brandTeal, shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.35, shadowRadius: 12, elevation: 5,
   },
-  roleButton: {
-    flex: 1,
-    borderRadius: 18,
-    borderWidth: 1,
-    borderColor: '#cbd5e1',
-    paddingVertical: 12,
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: '#ffffff',
+  primaryBtnText: { color: C.white, fontFamily: 'Inter', fontSize: 15, fontWeight: '600', letterSpacing: 0.3 },
+
+  dividerRow: { flexDirection: 'row', alignItems: 'center', gap: 12, marginBottom: 16 },
+  dividerLine: { flex: 1, height: 1, backgroundColor: '#E2E8F0' },
+  dividerText: { color: '#B3B3B3', fontSize: 13, fontFamily: 'Roboto' },
+
+  googleBtn: {
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'center',
+    borderWidth: 1, borderColor: 'rgba(144,153,184,0.4)',
+    borderRadius: 24, paddingVertical: 13, gap: 10, marginBottom: 20,
+    backgroundColor: C.white,
   },
-  roleButtonActive: {
-    backgroundColor: '#dbeafe',
-    borderColor: '#0f172a',
+  googleIcon: {
+    width: 20, height: 20, borderRadius: 10,
+    backgroundColor: '#EA4335', alignItems: 'center', justifyContent: 'center',
   },
-  roleButtonText: {
-    color: '#475569',
-    fontSize: 14,
-    fontWeight: '700',
-  },
-  roleButtonTextActive: {
-    color: '#0f172a',
-  },
-  inputGroup: {
-    marginBottom: 16,
-  },
-  inputLabel: {
-    color: '#64748b',
-    fontSize: 13,
-    marginBottom: 8,
-  },
-  input: {
-    backgroundColor: '#f8fafc',
-    borderRadius: 18,
-    paddingHorizontal: 16,
-    paddingVertical: 14,
-    color: '#0f172a',
-    fontSize: 15,
-  },
-  checkboxRow: {
-    flexDirection: 'row',
-    alignItems: 'flex-start',
-    gap: 12,
-    marginBottom: 24,
-  },
-  checkbox: {
-    width: 20,
-    height: 20,
-    borderRadius: 6,
-    borderWidth: 1,
-    borderColor: '#cbd5e1',
-    backgroundColor: '#ffffff',
-    marginTop: 4,
-  },
-  checkboxLabel: {
-    color: '#475569',
-    fontSize: 13,
-    lineHeight: 20,
-    flex: 1,
-  },
-  linkText: {
-    color: '#2563eb',
-    fontWeight: '700',
-  },
-  primaryButton: {
-    backgroundColor: '#0f172a',
-    borderRadius: 18,
-    paddingVertical: 16,
-    alignItems: 'center',
-    marginBottom: 18,
-  },
-  primaryButtonText: {
-    color: '#ffffff',
-    fontSize: 15,
-    fontWeight: '800',
-  },
-  dividerRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 12,
-    marginBottom: 18,
-  },
-  dividerLine: {
-    flex: 1,
-    height: 1,
-    backgroundColor: '#e2e8f0',
-  },
-  dividerText: {
-    color: '#94a3b8',
-    fontSize: 13,
-    fontWeight: '700',
-  },
-  secondaryButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderWidth: 1,
-    borderColor: '#cbd5e1',
-    borderRadius: 18,
-    paddingVertical: 14,
-    gap: 10,
-  },
-  secondaryIcon: {
-    fontSize: 18,
-    color: '#0f172a',
-    fontWeight: '700',
-  },
-  secondaryButtonText: {
-    color: '#0f172a',
-    fontSize: 15,
-    fontWeight: '700',
-  },
+  googleIconText: { color: C.white, fontSize: 12, fontWeight: '700' },
+  googleBtnText: { fontFamily: 'Inter', fontSize: 14, fontWeight: '500', color: '#757575' },
+
+  dotsRow: { flexDirection: 'row', justifyContent: 'center', gap: 8 },
+  dot: { width: 8, height: 8, borderRadius: 4, backgroundColor: '#D9D9D9' },
+  dotActive: { backgroundColor: C.brandDark, width: 24, borderRadius: 4 },
+
+  signInRow: { flexDirection: 'row', justifyContent: 'center', alignItems: 'center', marginTop: 4 },
+  signInPrompt: { fontFamily: 'Inter', fontSize: 14, color: C.muted },
+  signInLink: { fontFamily: 'Roboto', fontSize: 14, fontWeight: '700', color: C.brandTeal },
+
+  gestureWrap: { alignItems: 'center', paddingBottom: 8 },
+  gestureBar: { width: 108, height: 4, borderRadius: 12, backgroundColor: 'rgba(17,27,32,0.25)' },
 });

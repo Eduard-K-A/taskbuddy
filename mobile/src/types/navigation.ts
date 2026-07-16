@@ -1,26 +1,57 @@
 // Navigation type definitions used across the mobile app
-// Keep these simple so the app can import shared route names and role types.
 
 export type Role = 'homeowner' | 'provider';
 
-// Bottom tab keys used by the app's simple tab bar
+// Homeowner bottom tab keys
+export type HOTabKey = 'Home' | 'My Jobs' | 'Create' | 'Wallet' | 'Profile';
+
+// Provider bottom tab keys  
+export type SPTabKey = 'Dashboard' | 'My Jobs' | 'Create' | 'Calendar' | 'Profile';
+
+// Legacy alias for backward compatibility
 export type BottomTabParamList = {
-	Home: undefined;
-	'My Jobs': undefined;
-	Wallet: undefined;
-	Profile: undefined;
+  Home: undefined;
+  'My Jobs': undefined;
+  Wallet: undefined;
+  Profile: undefined;
 };
 
-// Convenience union type for screen keys (useful in simple switch-based renderers)
 export type ScreenKey = keyof BottomTabParamList;
 
-// Root-level routes for a minimal app router
 export type RootStackParamList = {
-	Splash: undefined;
-	Auth: undefined;
-	App: { role?: Role } | undefined;
+  Splash: undefined;
+  Onboarding: undefined;
+  Auth: undefined;
+  App: { role?: Role } | undefined;
 };
+
+// Homeowner screen keys (for sub-navigation)
+export type HOScreen =
+  | 'Home'
+  | 'My Jobs'
+  | 'Create Job'
+  | 'Wallet'
+  | 'Profile'
+  | 'Job Detail'
+  | 'Chat'
+  | 'Notifications'
+  | 'Edit Profile'
+  | 'Settings';
+
+// Provider screen keys
+export type SPScreen =
+  | 'Dashboard'
+  | 'My Jobs'
+  | 'Calendar'
+  | 'Wallet'
+  | 'Profile'
+  | 'Job Detail'
+  | 'Urgent Job'
+  | 'Chat'
+  | 'Notifications'
+  | 'Edit Profile';
 
 export const DEFAULT_ROLE: Role = 'homeowner';
 
+// Legacy
 export const bottomTabs: ScreenKey[] = ['Home', 'My Jobs', 'Wallet', 'Profile'];

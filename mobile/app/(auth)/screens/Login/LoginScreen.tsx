@@ -8,12 +8,12 @@
  *  - Logo: TaskBuddy wordmark (League Spartan Bold 32px #063D4D) + logo mark icon
  *  - Tagline: "Hire with confidence, pay with ease." — Darker Grotesque 800 18px #063E4D
  *  - "Welcome!" — Inter Bold 20px #063D4D
- *  - "Sign in to your account" — Inter Medium 14px #9099B8
+ *  - "Sign in to your account" — Inter Medium 14px #90A1B9
  *  - Email + Password inputs (white box, radius 8, 40px height)
- *  - "Forgot Password?" link (Inter Bold 14px #096E8B)
+ *  - "Forgot Password?" link (Inter Bold 14px #096F8B)
  *  - "Sign In" primary button (teal, radius 24, 48px height)
- *  - "or" divider
- *  - "Continue with Google" outline button
+ *  - "or" divider (#90A1B9)
+ *  - "Continue with Google" outline button (radius 50, stroke #EAEEF4)
  *  - "Don't have an account? Sign Up"
  *
  * DEMO MODE: Sign In navigates based on selected role (homeowner / provider).
@@ -21,29 +21,17 @@
 
 import React, { useState } from 'react';
 import {
-  Dimensions,
   KeyboardAvoidingView,
   Platform,
   Pressable,
   ScrollView,
-  StyleSheet,
   Text,
   TextInput,
   TouchableOpacity,
   View,
 } from 'react-native';
-
-// ─── Design tokens (inline for self-contained screen) ─────────────────────────
-const C = {
-  brandDark: '#063D4D',
-  brandTeal: '#096E8B',
-  brandCyan: '#0AA2CB',
-  muted: '#9099B8',
-  white: '#FFFFFF',
-  error: '#E03434',
-  googleText: '#757575',
-  background: '#FFFFFF',
-} as const;
+import { Colors } from '../../../../src/constants/designTokens';
+import { styles } from './styles';
 
 // ─── Props ────────────────────────────────────────────────────────────────────
 interface LoginScreenProps {
@@ -84,7 +72,7 @@ function InputField({
           testID={testID}
           style={styles.inputText}
           placeholder={placeholder}
-          placeholderTextColor={C.muted}
+          placeholderTextColor={Colors.muted}
           value={value}
           onChangeText={onChangeText}
           secureTextEntry={secureTextEntry}
@@ -209,7 +197,7 @@ export default function LoginScreen({
                 testID="input-password"
                 style={[styles.inputText, styles.flex]}
                 placeholder="Password"
-                placeholderTextColor={C.muted}
+                placeholderTextColor={Colors.muted}
                 value={password}
                 onChangeText={setPassword}
                 secureTextEntry={!showPassword}
@@ -273,153 +261,3 @@ export default function LoginScreen({
     </View>
   );
 }
-
-// ─── Styles ───────────────────────────────────────────────────────────────────
-const { width: W } = Dimensions.get('window');
-const BLOB = Math.round(W * 1.1);
-
-const styles = StyleSheet.create({
-  flex: { flex: 1 },
-  screen: { flex: 1, backgroundColor: C.background },
-
-  // Blobs
-  blobTopLeft: {
-    position: 'absolute', width: BLOB, height: BLOB, borderRadius: BLOB / 2,
-    backgroundColor: 'rgba(10,162,203,0.18)', top: -BLOB * 0.6, left: -BLOB * 0.55,
-  },
-  blobTopRight: {
-    position: 'absolute', width: BLOB * 0.7, height: BLOB * 0.7, borderRadius: BLOB * 0.35,
-    backgroundColor: 'rgba(9,110,139,0.14)', top: -BLOB * 0.3, right: -BLOB * 0.3,
-  },
-  blobBottomLeft: {
-    position: 'absolute', width: BLOB * 0.7, height: BLOB * 0.7, borderRadius: BLOB * 0.35,
-    backgroundColor: 'rgba(9,110,139,0.10)', bottom: -BLOB * 0.3, left: -BLOB * 0.35,
-  },
-  blobBottomRight: {
-    position: 'absolute', width: BLOB, height: BLOB, borderRadius: BLOB / 2,
-    backgroundColor: 'rgba(10,162,203,0.12)', bottom: -BLOB * 0.62, right: -BLOB * 0.5,
-  },
-
-  // Scroll
-  scrollContent: { paddingHorizontal: 30, paddingTop: 72, paddingBottom: 40 },
-
-  // Logo
-  logoSection: { marginBottom: 32, alignItems: 'flex-start' },
-  logoMark: { flexDirection: 'row', alignItems: 'flex-end', gap: 8, marginBottom: 12 },
-  logoRect: {
-    width: 58, height: 70, backgroundColor: C.brandCyan, borderRadius: 8,
-    padding: 10, justifyContent: 'space-around',
-  },
-  logoLine: { height: 4, width: 26, backgroundColor: C.white, borderRadius: 50 },
-  logoFigure: { alignItems: 'center', gap: 4 },
-  logoHead: { width: 16, height: 16, borderRadius: 8, backgroundColor: '#FFEECF' },
-  logoBody: { width: 26, height: 18, backgroundColor: C.brandTeal },
-  logoText: {
-    fontFamily: 'League Spartan', fontSize: 32, fontWeight: '700',
-    color: C.brandDark, letterSpacing: 0.32, marginBottom: 4,
-  },
-  tagline: {
-    fontFamily: 'Inter', fontSize: 13, fontWeight: '600',
-    color: C.brandDark, opacity: 0.7,
-  },
-
-  // Heading
-  headingSection: { marginBottom: 16 },
-  welcomeText: {
-    fontFamily: 'Inter', fontSize: 20, fontWeight: '700',
-    color: C.brandDark, letterSpacing: 0.2, marginBottom: 4,
-  },
-  subtitleText: {
-    fontFamily: 'Inter', fontSize: 14, fontWeight: '500',
-    color: C.muted, letterSpacing: 0.14,
-  },
-
-  // Role selector (DEMO)
-  roleRow: { flexDirection: 'row', gap: 10, marginBottom: 18 },
-  roleChip: {
-    flex: 1, paddingVertical: 10, borderRadius: 20,
-    borderWidth: 1, borderColor: 'rgba(144,153,184,0.4)',
-    backgroundColor: C.white, alignItems: 'center',
-  },
-  roleChipActive: {
-    backgroundColor: C.brandDark, borderColor: C.brandDark,
-  },
-  roleChipText: { fontFamily: 'Inter', fontSize: 13, fontWeight: '600', color: C.muted },
-  roleChipTextActive: { color: C.white },
-
-  // Inputs
-  inputGroup: { marginBottom: 18 },
-  inputLabel: {
-    fontFamily: 'Inter', fontSize: 15, fontWeight: '600',
-    color: C.brandDark, lineHeight: 21, marginBottom: 8,
-  },
-  inputBox: {
-    flexDirection: 'row', alignItems: 'center',
-    backgroundColor: C.white, borderRadius: 8,
-    paddingHorizontal: 16, paddingVertical: 12,
-    minHeight: 40, borderWidth: 1,
-    borderColor: 'rgba(144,153,184,0.25)',
-    shadowColor: '#063D4D', shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.06, shadowRadius: 6, elevation: 2,
-  },
-  inputBoxFocused: { borderColor: C.brandTeal },
-  inputBoxError: { borderColor: C.error },
-  inputText: {
-    flex: 1, fontFamily: 'Inter', fontSize: 16, fontWeight: '400',
-    color: C.brandDark, padding: 0, margin: 0,
-  },
-  inputError: {
-    fontFamily: 'Inter', fontSize: 13, color: C.error,
-    marginTop: 4, lineHeight: 18,
-  },
-
-  // Password
-  passwordSection: { marginBottom: 18 },
-  passwordLabelRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 },
-  forgotText: { fontFamily: 'Inter', fontSize: 13, fontWeight: '700', color: C.brandTeal },
-  eyeBtn: { paddingLeft: 8 },
-  eyeIcon: { fontSize: 16 },
-
-  // Primary button
-  primaryBtn: {
-    backgroundColor: C.brandTeal, borderRadius: 24,
-    paddingVertical: 14, alignItems: 'center', marginBottom: 24, minHeight: 48,
-    shadowColor: C.brandTeal, shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.35, shadowRadius: 12, elevation: 5,
-  },
-  primaryBtnText: {
-    fontFamily: 'Inter', fontSize: 15, fontWeight: '600',
-    color: C.white, letterSpacing: 0.3,
-  },
-
-  // Divider
-  dividerRow: { flexDirection: 'row', alignItems: 'center', marginBottom: 20, gap: 10 },
-  dividerLine: { flex: 1, height: 1, backgroundColor: C.muted, opacity: 0.4 },
-  dividerText: { fontFamily: 'Roboto', fontSize: 13, color: C.muted },
-
-  // Google
-  googleBtn: {
-    flexDirection: 'row', alignItems: 'center', justifyContent: 'center',
-    borderWidth: 1, borderColor: 'rgba(144,153,184,0.5)', borderRadius: 24,
-    paddingVertical: 12, paddingHorizontal: 24, marginBottom: 32, gap: 10,
-    minHeight: 44, backgroundColor: C.white,
-  },
-  googleIcon: {
-    width: 20, height: 20, borderRadius: 10,
-    backgroundColor: '#EA4335', alignItems: 'center', justifyContent: 'center',
-  },
-  googleIconText: { color: C.white, fontSize: 12, fontWeight: '700' },
-  googleBtnText: {
-    fontFamily: 'Inter', fontSize: 14, fontWeight: '500',
-    color: C.googleText, letterSpacing: 0.1,
-  },
-
-  // Sign Up
-  signUpRow: { flexDirection: 'row', justifyContent: 'center', alignItems: 'center' },
-  signUpPrompt: { fontFamily: 'Inter', fontSize: 14, fontWeight: '500', color: C.muted },
-  signUpLink: { fontFamily: 'Roboto', fontSize: 14, fontWeight: '700', color: C.brandTeal },
-
-  // Gesture bar
-  gestureBarWrap: { alignItems: 'center', paddingBottom: 8, paddingTop: 4 },
-  gestureBar: { width: 108, height: 4, borderRadius: 12, backgroundColor: 'rgba(17,27,32,0.25)' },
-});
