@@ -1,5 +1,6 @@
 import {
   BadRequestException,
+  ForbiddenException,
   Injectable,
   UnauthorizedException,
 } from '@nestjs/common';
@@ -47,6 +48,19 @@ export class AuthService {
       password: dto.password,
     });
     if (error) throw new UnauthorizedException(error.message);
+
+    // Suspended accounts must be rejected at login itself, not only by the
+    // guard on later requests (story #29, TC-ADM-006).
+    const { data: profile } = await this.supabase.admin
+      .from('profiles')
+      .select('deactivated_at')
+      .eq('id', data.user.id)
+      .maybeSingle();
+    if (profile?.deactivated_at) {
+      await this.supabase.admin.auth.admin.signOut(data.session.access_token);
+      throw new ForbiddenException('Account suspended');
+    }
+
     return {
       user: { id: data.user.id, email: data.user.email },
       session: {
