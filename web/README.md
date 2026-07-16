@@ -1,6 +1,6 @@
 # TaskBuddy Admin Console
 
-The admin dashboard for the TaskBuddy platform (`apps/web` in the monorepo). Next.js 16 App Router, TypeScript, Tailwind CSS v4, Lucide React, and Recharts. Runs entirely on mock data today, with a built-in data seam so switching to the real backend is a per-function swap — no page or component changes.
+The admin dashboard for the TaskBuddy platform (`web/` in the repo). Next.js 16 App Router, TypeScript, Tailwind CSS v4, Lucide React, and Recharts. Runs entirely on mock data today, with a built-in data seam so switching to the real backend is a per-function swap — no page or component changes.
 
 ## Tech Stack
 
@@ -10,8 +10,7 @@ The admin dashboard for the TaskBuddy platform (`apps/web` in the monorepo). Nex
 - **Icons**: Lucide React
 - **Charts**: Recharts
 - **Runtime**: React 19
-- **Tests**: Vitest (adapter unit tests) 
-- **Shared contracts**: `@taskbuddy/shared-types` (workspace package)
+- **Tests**: Vitest (adapter + validation unit tests)
 
 ## Features
 
@@ -60,7 +59,7 @@ src/
 ├── context/
 │   └── AppContext.tsx           # App state: session, data, mutations, persisted preferences
 └── lib/
-    ├── domain.ts                # Backend-shaped domain types (extends @taskbuddy/shared-types)
+    ├── domain.ts                # Backend-shaped domain types (shared platform contracts + admin types)
     ├── mock/db.ts               # In-memory mock database
     ├── services/                # THE DATA SEAM — pages/context only ever call these
     ├── adapters/                # Domain → display-row mapping, formatting (+ unit tests)
@@ -90,7 +89,7 @@ When `apps/backend` ships its admin endpoints:
 2. In `src/lib/services/index.ts`, replace each function body with the one-line `client` call already noted in its `// later:` comment.
 3. Nothing else changes — domain types, adapters, context, and every page keep working as-is.
 
-Domain types in `lib/domain.ts` reuse the platform-wide contracts from `@taskbuddy/shared-types`; admin-only types live there until the backend defines authoritative versions.
+Domain types in `lib/domain.ts` define the platform-wide contracts (`SharedUser`, `SharedBooking`) plus admin-only types, until the backend defines authoritative versions.
 
 ## npm audit note
 

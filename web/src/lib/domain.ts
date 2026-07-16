@@ -1,13 +1,26 @@
 // ─── Domain types ─────────────────────────────────────────────────────────────
-// "Backend-shaped" data: numbers, enums, ISO dates. Reuses the platform-wide
-// contracts from @taskbuddy/shared-types where they exist; admin-only types
-// live here until the backend defines authoritative versions (then they move
-// up into the shared package).
+// "Backend-shaped" data: numbers, enums, ISO dates. SharedUser/SharedBooking
+// are the platform-wide contracts (formerly @taskbuddy/shared-types, inlined
+// here when that workspace package was removed in the repo restructure);
+// admin-only types extend them until the backend defines authoritative
+// versions.
 
-import type {
-  User as SharedUser,
-  Booking as SharedBooking,
-} from "@taskbuddy/shared-types";
+interface SharedUser {
+  id: string;
+  email: string;
+  role: "homeowner" | "provider" | "admin";
+  createdAt: string;
+}
+
+interface SharedBooking {
+  id: string;
+  customerId: string;
+  providerId: string;
+  status: "PENDING" | "CONFIRMED" | "IN_PROGRESS" | "COMPLETED_PENDING_CONFIRMATION" | "COMPLETED" | "CANCELLED" | "DISPUTED";
+  serviceCategory: string;
+  scheduledDate: string;
+  amount: number;
+}
 
 export type Page =
   | "dashboard"
