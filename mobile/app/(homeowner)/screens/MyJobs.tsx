@@ -1,247 +1,244 @@
-import React from 'react';
+/**
+ * MyJobs.tsx (HO - My Jobs List)
+ *
+ * Figma Source: "HO - My Jobs List" (id: 46:850)
+ *
+ * Design:
+ * - Dark teal header with title "My Jobs" and filter tabs
+ * - Job cards list with status indicators
+ * - Floating action button for creating new job
+ */
+
+import React, { useState } from 'react';
 import {
-  SafeAreaView,
   ScrollView,
   StyleSheet,
   Text,
+  TouchableOpacity,
   View,
 } from 'react-native';
+import { Colors, Radii, Shadows, Sizes, Spacing } from '../../../src/constants/designTokens';
+import { HOScreen } from '../../../src/types/navigation';
 
-const days = ['S', 'M', 'T', 'W', 'T', 'F', 'S'];
-const dates = [null, null, null, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31];
+const FILTER_TABS = ['All', 'Active', 'Pending', 'Completed'];
 
-export default function MyJobs() {
+const JOBS = [
+  {
+    id: '1',
+    title: 'Home Deep Clean',
+    category: 'Deep Cleaning',
+    location: 'Brgy. Sabang, Lipa City, Batangas',
+    amount: '₱850',
+    status: 'Pending',
+    statusColor: '#F59E0B',
+    statusBg: '#FFF7ED',
+    date: 'May 13, 2026',
+    time: '10:00 AM',
+    provider: 'Juan dela Cruz',
+    barColor: '#F59E0B',
+  },
+  {
+    id: '2',
+    title: 'Office Cleaning',
+    category: 'General Cleaning',
+    location: '1962 J.P. Laurel National High',
+    amount: '₱685',
+    status: 'In Progress',
+    statusColor: '#22C55E',
+    statusBg: '#F0FDF4',
+    date: 'May 14, 2026',
+    time: '2:00 PM',
+    provider: 'Maria Santos',
+    barColor: '#22C55E',
+  },
+  {
+    id: '3',
+    title: 'Airbnb Turnover',
+    category: 'Deep Cleaning',
+    location: 'Brgy. Sampaguita, Lipa City',
+    amount: '₱895',
+    status: 'Completed',
+    statusColor: '#3B82F6',
+    statusBg: '#EFF6FF',
+    date: 'May 8, 2026',
+    time: '3:00 PM',
+    provider: 'Rosa Villanueva',
+    barColor: '#3B82F6',
+  },
+  {
+    id: '4',
+    title: 'Plumbing Repair',
+    category: 'Plumbing',
+    location: 'Brgy. Tambo, Lipa City',
+    amount: '₱1,200',
+    status: 'Pending',
+    statusColor: '#F59E0B',
+    statusBg: '#FFF7ED',
+    date: 'May 20, 2026',
+    time: '9:00 AM',
+    provider: 'Pending Assignment',
+    barColor: '#F59E0B',
+  },
+];
+
+interface MyJobsProps {
+  onNavigate: (screen: HOScreen) => void;
+}
+
+export default function MyJobs({ onNavigate }: MyJobsProps) {
+  const [activeFilter, setActiveFilter] = useState('All');
+
+  const filtered = activeFilter === 'All'
+    ? JOBS
+    : JOBS.filter((j) => j.status === activeFilter || (activeFilter === 'Active' && j.status === 'In Progress'));
+
   return (
-    <SafeAreaView style={styles.safeArea}>
-      <ScrollView contentContainerStyle={styles.container} showsVerticalScrollIndicator={false}>
-        <View style={styles.headerCard}>
+    <View style={styles.screen}>
+      {/* Header */}
+      <View style={styles.header}>
+        <View style={styles.headerTopRow}>
           <View>
-            <Text style={styles.subtext}>Customer · Calendar</Text>
-            <Text style={styles.title}>Calendar</Text>
+            <Text style={styles.headerSubtitle}>Customer · Calendar</Text>
+            <Text style={styles.headerTitle}>My Jobs</Text>
           </View>
           <View style={styles.jobsBadge}>
-            <Text style={styles.jobsBadgeText}>9 jobs</Text>
+            <Text style={styles.jobsBadgeText}>{JOBS.length} jobs</Text>
           </View>
         </View>
 
-        <View style={styles.calendarCard}>
-          <View style={styles.calendarHeader}>
-            <Text style={styles.calendarMonth}>May 2026</Text>
-            <View style={styles.calendarNav}>
-              <Text style={styles.navArrow}>←</Text>
-              <Text style={styles.navArrow}>→</Text>
-            </View>
-          </View>
-
-          <View style={styles.weekRow}>
-            {days.map((day) => (
-              <Text key={day} style={styles.weekDay}>
-                {day}
+        {/* Filter tabs */}
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          contentContainerStyle={styles.filterTabsContent}
+        >
+          {FILTER_TABS.map((tab) => (
+            <TouchableOpacity
+              key={tab}
+              style={[styles.filterTab, activeFilter === tab && styles.filterTabActive]}
+              onPress={() => setActiveFilter(tab)}
+              activeOpacity={0.8}
+            >
+              <Text style={[styles.filterTabText, activeFilter === tab && styles.filterTabTextActive]}>
+                {tab}
               </Text>
-            ))}
-          </View>
+            </TouchableOpacity>
+          ))}
+        </ScrollView>
+      </View>
 
-          <View style={styles.grid}> 
-            {dates.map((date, idx) => (
-              <View key={`${date}-${idx}`} style={[styles.dateCell, date === 13 && styles.dateCellSelected]}>
-                <Text style={[styles.dateText, date === 13 && styles.dateTextSelected]}>{date || ''}</Text>
-                {date === 8 || date === 13 || date === 19 || date === 29 ? <View style={styles.dot} /> : null}
+      {/* Jobs list */}
+      <ScrollView
+        style={styles.body}
+        contentContainerStyle={styles.bodyContent}
+        showsVerticalScrollIndicator={false}
+      >
+        {filtered.map((job) => (
+          <TouchableOpacity
+            key={job.id}
+            style={styles.jobCard}
+            onPress={() => onNavigate('Job Detail')}
+            activeOpacity={0.9}
+          >
+            <View style={[styles.jobBar, { backgroundColor: job.barColor }]} />
+            <View style={styles.jobContent}>
+              <View style={styles.jobCardHeader}>
+                <Text style={styles.jobTitle}>{job.title}</Text>
+                <View style={[styles.statusPill, { backgroundColor: job.statusBg }]}>
+                  <Text style={[styles.statusPillText, { color: job.statusColor }]}>{job.status}</Text>
+                </View>
               </View>
-            ))}
-          </View>
-        </View>
-
-        <Text style={styles.sectionTitle}>Tue May 13 — 2 jobs</Text>
-
-        <View style={styles.jobCard}>
-          <View style={styles.jobCardBar} />
-          <View style={styles.jobCardContent}>
-            <Text style={styles.jobTitle}>Studio Apartment</Text>
-            <View style={styles.jobRow}>
-              <Text style={styles.jobMeta}>10:00 AM</Text>
-              <Text style={styles.jobMeta}>Brgy. Sabang, Lipa City</Text>
+              <Text style={styles.jobCategory}>{job.category}</Text>
+              <Text style={styles.jobLocation}>📍 {job.location}</Text>
+              <View style={styles.jobMetaRow}>
+                <Text style={styles.jobMeta}>📅 {job.date} · {job.time}</Text>
+              </View>
+              <View style={styles.jobFooter}>
+                <Text style={styles.jobProvider}>👤 {job.provider}</Text>
+                <Text style={styles.jobAmount}>{job.amount}</Text>
+              </View>
             </View>
-            <Text style={styles.jobPrice}>₱675</Text>
-          </View>
-        </View>
-
-        <View style={styles.jobCard}>
-          <View style={[styles.jobCardBar, styles.jobCardBarYellow]} />
-          <View style={styles.jobCardContent}>
-            <Text style={styles.jobTitle}>Airbnb Turnover</Text>
-            <View style={styles.jobRow}>
-              <Text style={styles.jobMeta}>3:00 PM</Text>
-              <Text style={styles.jobMeta}>1962 J.P. Laurel</Text>
-            </View>
-            <Text style={styles.jobPrice}>₱895</Text>
-          </View>
-        </View>
+          </TouchableOpacity>
+        ))}
+        <View style={{ height: 20 }} />
       </ScrollView>
-    </SafeAreaView>
+
+      {/* FAB - Create Job */}
+      <TouchableOpacity
+        style={styles.fab}
+        onPress={() => onNavigate('Create Job')}
+        activeOpacity={0.85}
+      >
+        <Text style={styles.fabText}>+</Text>
+      </TouchableOpacity>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
-  safeArea: {
-    flex: 1,
-    backgroundColor: '#eaf3fb',
+  screen: { flex: 1, backgroundColor: Colors.background },
+
+  header: {
+    backgroundColor: Colors.brandDark,
+    paddingTop: Sizes.statusBarHeight,
+    paddingHorizontal: Spacing.screenH,
+    paddingBottom: 16,
+    borderBottomLeftRadius: 28,
+    borderBottomRightRadius: 28,
   },
-  container: {
-    paddingHorizontal: 20,
-    paddingTop: 18,
-    paddingBottom: 28,
-  },
-  headerCard: {
-    backgroundColor: '#0f172a',
-    borderRadius: 28,
-    padding: 22,
+  headerTopRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 20,
+    paddingTop: 12,
+    marginBottom: 16,
   },
-  subtext: {
-    color: '#cbd5e1',
-    fontSize: 13,
-    marginBottom: 6,
-  },
-  title: {
-    color: '#ffffff',
-    fontSize: 28,
-    fontWeight: '800',
-  },
+  headerSubtitle: { color: 'rgba(255,255,255,0.6)', fontSize: 12, fontFamily: 'Inter', marginBottom: 2 },
+  headerTitle: { color: Colors.white, fontSize: 24, fontWeight: '800', fontFamily: 'Inter' },
   jobsBadge: {
-    backgroundColor: '#2563eb',
-    borderRadius: 20,
-    paddingVertical: 8,
-    paddingHorizontal: 14,
+    backgroundColor: Colors.brandTeal, borderRadius: 16,
+    paddingVertical: 6, paddingHorizontal: 14,
   },
-  jobsBadgeText: {
-    color: '#ffffff',
-    fontWeight: '700',
-    fontSize: 13,
+  jobsBadgeText: { color: Colors.white, fontWeight: '700', fontSize: 13, fontFamily: 'Inter' },
+
+  filterTabsContent: { gap: 8, paddingRight: 4 },
+  filterTab: {
+    paddingHorizontal: 16, paddingVertical: 8, borderRadius: 999,
+    backgroundColor: 'rgba(255,255,255,0.15)',
   },
-  calendarCard: {
-    backgroundColor: '#ffffff',
-    borderRadius: 28,
-    padding: 18,
-    marginBottom: 22,
-    shadowColor: '#0f172a',
-    shadowOpacity: 0.06,
-    shadowOffset: { width: 0, height: 12 },
-    shadowRadius: 22,
-    elevation: 4,
-  },
-  calendarHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 18,
-  },
-  calendarMonth: {
-    fontSize: 16,
-    fontWeight: '800',
-    color: '#0f172a',
-  },
-  calendarNav: {
-    flexDirection: 'row',
-    gap: 12,
-  },
-  navArrow: {
-    color: '#0f172a',
-    fontSize: 20,
-    width: 28,
-    textAlign: 'center',
-  },
-  weekRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    marginBottom: 10,
-  },
-  weekDay: {
-    color: '#94a3b8',
-    width: 28,
-    textAlign: 'center',
-    fontSize: 12,
-    fontWeight: '700',
-  },
-  grid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-  },
-  dateCell: {
-    width: '14.28%',
-    aspectRatio: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginBottom: 6,
-    borderRadius: 14,
-  },
-  dateCellSelected: {
-    backgroundColor: '#0f172a',
-  },
-  dateText: {
-    color: '#0f172a',
-    fontSize: 14,
-    fontWeight: '700',
-  },
-  dateTextSelected: {
-    color: '#ffffff',
-  },
-  dot: {
-    width: 6,
-    height: 6,
-    borderRadius: 3,
-    backgroundColor: '#34d399',
-    marginTop: 4,
-  },
-  sectionTitle: {
-    color: '#0f172a',
-    fontSize: 16,
-    fontWeight: '800',
-    marginBottom: 16,
-  },
+  filterTabActive: { backgroundColor: Colors.white },
+  filterTabText: { color: 'rgba(255,255,255,0.8)', fontSize: 13, fontWeight: '600', fontFamily: 'Inter' },
+  filterTabTextActive: { color: Colors.brandDark },
+
+  body: { flex: 1 },
+  bodyContent: { paddingHorizontal: Spacing.screenH, paddingTop: 28, paddingBottom: 80 },
+
   jobCard: {
-    flexDirection: 'row',
-    backgroundColor: '#ffffff',
-    borderRadius: 24,
-    padding: 18,
-    marginBottom: 16,
-    shadowColor: '#0f172a',
-    shadowOpacity: 0.05,
-    shadowOffset: { width: 0, height: 10 },
-    shadowRadius: 18,
-    elevation: 3,
+    backgroundColor: Colors.white, borderRadius: Radii.card,
+    marginBottom: 14, flexDirection: 'row', overflow: 'hidden',
+    ...Shadows.card,
   },
-  jobCardBar: {
-    width: 4,
-    borderRadius: 4,
-    backgroundColor: '#34d399',
-    marginRight: 16,
+  jobBar: { width: 5, borderRadius: 0 },
+  jobContent: { flex: 1, padding: 16 },
+  jobCardHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4 },
+  jobTitle: { color: Colors.brandDark, fontSize: 15, fontWeight: '700', fontFamily: 'Inter', flex: 1, marginRight: 8 },
+  statusPill: { borderRadius: 999, paddingHorizontal: 10, paddingVertical: 4 },
+  statusPillText: { fontSize: 11, fontWeight: '600', fontFamily: 'Inter' },
+  jobCategory: { color: Colors.brandTeal, fontSize: 12, fontWeight: '600', fontFamily: 'Inter', marginBottom: 4 },
+  jobLocation: { color: Colors.slate, fontSize: 12, fontFamily: 'Inter', marginBottom: 6 },
+  jobMetaRow: { marginBottom: 10 },
+  jobMeta: { color: Colors.slate, fontSize: 12, fontFamily: 'Inter' },
+  jobFooter: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
+  jobProvider: { color: Colors.muted, fontSize: 12, fontFamily: 'Inter' },
+  jobAmount: { color: Colors.brandDark, fontSize: 18, fontWeight: '800', fontFamily: 'Inter' },
+
+  fab: {
+    position: 'absolute', bottom: 24, right: Spacing.screenH,
+    width: 56, height: 56, borderRadius: 28,
+    backgroundColor: Colors.brandTeal,
+    alignItems: 'center', justifyContent: 'center',
+    shadowColor: Colors.brandTeal, shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.35, shadowRadius: 10, elevation: 8,
   },
-  jobCardBarYellow: {
-    backgroundColor: '#fbbf24',
-  },
-  jobCardContent: {
-    flex: 1,
-  },
-  jobTitle: {
-    color: '#0f172a',
-    fontSize: 17,
-    fontWeight: '800',
-    marginBottom: 10,
-  },
-  jobRow: {
-    gap: 8,
-    marginBottom: 12,
-  },
-  jobMeta: {
-    color: '#64748b',
-    fontSize: 12,
-  },
-  jobPrice: {
-    color: '#0f172a',
-    fontWeight: '800',
-    fontSize: 18,
-  },
+  fabText: { color: Colors.white, fontSize: 28, fontWeight: '300', lineHeight: 32 },
 });

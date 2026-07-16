@@ -1,238 +1,210 @@
-import React from 'react';
-import { SafeAreaView, ScrollView, StyleSheet, Text, View } from 'react-native';
+/**
+ * Profile.tsx (HO - My Profile)
+ *
+ * Figma Source: "HO - My Profile" (id: 46:904)
+ *
+ * Design:
+ * - Large teal hero header with avatar, name, role badge, settings button
+ * - Stats row: Jobs Posted, Balance, Avg Rating
+ * - Account info card
+ * - Navigation options list (Edit Profile, Payment, Notifications, Settings, Logout)
+ */
 
-const stats = [
+import React from 'react';
+import {
+  ScrollView,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View,
+} from 'react-native';
+import { Colors, Radii, Shadows, Sizes, Spacing } from '../../../src/constants/designTokens';
+import { HOScreen } from '../../../src/types/navigation';
+
+const STATS = [
   { label: 'Jobs Posted', value: '12' },
   { label: 'Balance', value: '₱250' },
-  { label: 'Avg Rating', value: '4.9' },
+  { label: 'Avg Rating', value: '4.9 ⭐' },
 ];
 
-const options = [
-  { label: 'Edit Profile', subtitle: 'Update your personal info' },
-  { label: 'Payment Methods', subtitle: 'Manage cards & billing' },
-  { label: 'Notifications', subtitle: 'Alerts & preferences' },
-  { label: 'App Settings', subtitle: 'Preferences & display' },
+const MENU_ITEMS: { label: string; icon: string; subtitle: string; screen: HOScreen | null }[] = [
+  { label: 'Edit Profile', icon: '✏️', subtitle: 'Update your personal info', screen: 'Edit Profile' },
+  { label: 'Payment Methods', icon: '💳', subtitle: 'Manage cards & billing', screen: 'Wallet' },
+  { label: 'Notifications', icon: '🔔', subtitle: 'Alerts & preferences', screen: 'Notifications' },
+  { label: 'App Settings', icon: '⚙️', subtitle: 'Preferences & display', screen: 'Settings' },
+  { label: 'Logout', icon: '🚪', subtitle: 'Sign out of your account', screen: null },
 ];
 
-export default function Profile() {
+interface ProfileProps {
+  onNavigate: (screen: HOScreen) => void;
+  onLogout: () => void;
+}
+
+export default function Profile({ onNavigate, onLogout }: ProfileProps) {
   return (
-    <SafeAreaView style={styles.safeArea}>
-      <ScrollView contentContainerStyle={styles.container} showsVerticalScrollIndicator={false}>
-        <View style={styles.heroCard}>
-          <View style={styles.avatarSection}>
-            <View style={styles.avatarCircle}>
-              <Text style={styles.avatarText}>AC</Text>
-            </View>
-            <View style={styles.heroText}>
-              <Text style={styles.profileName}>Alex Chen</Text>
-              <View style={styles.customerBadge}>
-                <Text style={styles.customerBadgeText}>Customer</Text>
-              </View>
-            </View>
-            <View style={styles.settingsButton}>
-              <Text style={styles.settingsIcon}>⚙</Text>
-            </View>
-          </View>
+    <View style={styles.screen}>
+      {/* Hero Header */}
+      <View style={styles.hero}>
+        {/* Top row */}
+        <View style={styles.heroTopRow}>
+          <Text style={styles.heroTitle}>My Profile</Text>
+          <TouchableOpacity
+            style={styles.settingsBtn}
+            onPress={() => onNavigate('Settings')}
+            activeOpacity={0.8}
+          >
+            <Text style={styles.settingsBtnIcon}>⚙️</Text>
+          </TouchableOpacity>
+        </View>
 
-          <View style={styles.statsRow}>
-            {stats.map((item) => (
-              <View key={item.label} style={styles.statCard}>
-                <Text style={styles.statValue}>{item.value}</Text>
-                <Text style={styles.statLabel}>{item.label}</Text>
-              </View>
-            ))}
+        {/* Avatar + name */}
+        <View style={styles.avatarSection}>
+          <View style={styles.avatarCircle}>
+            <Text style={styles.avatarText}>AC</Text>
+          </View>
+          <View style={styles.avatarInfo}>
+            <Text style={styles.profileName}>Alex Chen</Text>
+            <View style={styles.roleBadge}>
+              <Text style={styles.roleBadgeText}>Homeowner</Text>
+            </View>
           </View>
         </View>
 
-        <View style={styles.accountCard}>
-          <Text style={styles.accountTitle}>Account Info</Text>
-          <View style={styles.infoRow}>
-            <Text style={styles.infoLabel}>Email</Text>
-            <Text style={styles.infoValue}>alex@example.com</Text>
-          </View>
-          <View style={styles.infoRow}>
-            <Text style={styles.infoLabel}>Phone</Text>
-            <Text style={styles.infoValue}>+639876543218</Text>
-          </View>
-          <View style={styles.infoRow}>
-            <Text style={styles.infoLabel}>Location</Text>
-            <Text style={styles.infoValue}>Brgy. Sampaguita...</Text>
-          </View>
-          <View style={styles.infoRow}>
-            <Text style={styles.infoLabel}>Member Since</Text>
-            <Text style={styles.infoValue}>March 2026</Text>
-          </View>
-        </View>
-
-        <View style={styles.optionsCard}>
-          {options.map((option) => (
-            <View key={option.label} style={styles.optionRow}>
-              <View style={styles.optionIcon} />
-              <View style={styles.optionTextGroup}>
-                <Text style={styles.optionLabel}>{option.label}</Text>
-                <Text style={styles.optionSubtitle}>{option.subtitle}</Text>
-              </View>
-              <Text style={styles.optionArrow}>›</Text>
+        {/* Stats */}
+        <View style={styles.statsRow}>
+          {STATS.map((s) => (
+            <View key={s.label} style={styles.statCard}>
+              <Text style={styles.statValue}>{s.value}</Text>
+              <Text style={styles.statLabel}>{s.label}</Text>
             </View>
           ))}
         </View>
+      </View>
+
+      <ScrollView
+        style={styles.body}
+        contentContainerStyle={styles.bodyContent}
+        showsVerticalScrollIndicator={false}
+      >
+        {/* Account Info */}
+        <View style={styles.card}>
+          <Text style={styles.cardTitle}>Account Info</Text>
+          {[
+            { label: 'Email', value: 'alex@example.com' },
+            { label: 'Phone', value: '+639876543218' },
+            { label: 'Location', value: 'Brgy. Sampaguita...' },
+            { label: 'Member Since', value: 'March 2026' },
+          ].map((item) => (
+            <View key={item.label} style={styles.infoRow}>
+              <Text style={styles.infoLabel}>{item.label}</Text>
+              <Text style={styles.infoValue}>{item.value}</Text>
+            </View>
+          ))}
+        </View>
+
+        {/* Menu */}
+        <View style={styles.card}>
+          {MENU_ITEMS.map((item, i) => (
+            <TouchableOpacity
+              key={item.label}
+              style={[styles.menuItem, i < MENU_ITEMS.length - 1 && styles.menuItemBorder]}
+              onPress={() => {
+                if (item.screen) onNavigate(item.screen);
+                else onLogout();
+              }}
+              activeOpacity={0.8}
+            >
+              <View style={styles.menuIcon}>
+                <Text style={styles.menuIconText}>{item.icon}</Text>
+              </View>
+              <View style={styles.menuTextGroup}>
+                <Text style={[styles.menuLabel, item.label === 'Logout' && styles.menuLabelLogout]}>
+                  {item.label}
+                </Text>
+                <Text style={styles.menuSubtitle}>{item.subtitle}</Text>
+              </View>
+              <Text style={styles.menuArrow}>›</Text>
+            </TouchableOpacity>
+          ))}
+        </View>
+
+        <View style={{ height: 20 }} />
       </ScrollView>
-    </SafeAreaView>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
-  safeArea: {
-    flex: 1,
-    backgroundColor: '#eaf3fb',
+  screen: { flex: 1, backgroundColor: Colors.background },
+
+  hero: {
+    backgroundColor: Colors.brandDark,
+    paddingTop: Sizes.statusBarHeight,
+    paddingHorizontal: Spacing.screenH,
+    paddingBottom: 24,
+    borderBottomLeftRadius: 28,
+    borderBottomRightRadius: 28,
   },
-  container: {
-    paddingHorizontal: 20,
-    paddingTop: 18,
-    paddingBottom: 28,
+  heroTopRow: {
+    flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center',
+    paddingTop: 12, marginBottom: 20,
   },
-  heroCard: {
-    backgroundColor: '#0f172a',
-    borderRadius: 28,
-    padding: 22,
-    marginBottom: 20,
+  heroTitle: { color: Colors.white, fontSize: 22, fontWeight: '800', fontFamily: 'Inter' },
+  settingsBtn: {
+    width: 40, height: 40, borderRadius: 12,
+    backgroundColor: 'rgba(255,255,255,0.15)', alignItems: 'center', justifyContent: 'center',
   },
-  avatarSection: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: 22,
-  },
+  settingsBtnIcon: { fontSize: 18 },
+
+  avatarSection: { flexDirection: 'row', alignItems: 'center', marginBottom: 20, gap: 16 },
   avatarCircle: {
-    width: 56,
-    height: 56,
-    borderRadius: 18,
-    backgroundColor: '#38bdf8',
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginRight: 16,
+    width: 64, height: 64, borderRadius: 20,
+    backgroundColor: Colors.brandCyan, alignItems: 'center', justifyContent: 'center',
+    borderWidth: 3, borderColor: 'rgba(255,255,255,0.3)',
   },
-  avatarText: {
-    color: '#ffffff',
-    fontWeight: '800',
+  avatarText: { color: Colors.white, fontWeight: '800', fontSize: 22, fontFamily: 'Inter' },
+  avatarInfo: { flex: 1 },
+  profileName: { color: Colors.white, fontSize: 22, fontWeight: '800', fontFamily: 'Inter', marginBottom: 6 },
+  roleBadge: {
+    alignSelf: 'flex-start', backgroundColor: 'rgba(255,255,255,0.2)',
+    borderRadius: 12, paddingHorizontal: 12, paddingVertical: 4,
   },
-  heroText: {
-    flex: 1,
-  },
-  profileName: {
-    color: '#ffffff',
-    fontSize: 22,
-    fontWeight: '800',
-    marginBottom: 4,
-  },
-  customerBadge: {
-    backgroundColor: '#ffffff22',
-    alignSelf: 'flex-start',
-    borderRadius: 12,
-    paddingHorizontal: 10,
-    paddingVertical: 6,
-  },
-  customerBadgeText: {
-    color: '#dbeafe',
-    fontSize: 12,
-    fontWeight: '700',
-  },
-  settingsButton: {
-    width: 40,
-    height: 40,
-    borderRadius: 14,
-    backgroundColor: '#ffffff22',
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  settingsIcon: {
-    color: '#ffffff',
-    fontSize: 18,
-  },
-  statsRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    gap: 12,
-  },
+  roleBadgeText: { color: 'rgba(255,255,255,0.9)', fontSize: 12, fontWeight: '600', fontFamily: 'Inter' },
+
+  statsRow: { flexDirection: 'row', gap: 10 },
   statCard: {
-    flex: 1,
-    backgroundColor: '#ffffff11',
-    borderRadius: 22,
-    padding: 16,
-    alignItems: 'center',
+    flex: 1, backgroundColor: 'rgba(255,255,255,0.12)',
+    borderRadius: 16, padding: 14, alignItems: 'center',
   },
-  statValue: {
-    color: '#ffffff',
-    fontSize: 18,
-    fontWeight: '800',
+  statValue: { color: Colors.white, fontSize: 18, fontWeight: '800', fontFamily: 'Inter', marginBottom: 4 },
+  statLabel: { color: 'rgba(255,255,255,0.7)', fontSize: 11, fontFamily: 'Inter', textAlign: 'center' },
+
+  body: { flex: 1 },
+  bodyContent: { paddingHorizontal: Spacing.screenH, paddingTop: 20, paddingBottom: 20 },
+
+  card: {
+    backgroundColor: Colors.white, borderRadius: Radii.card,
+    padding: 20, marginBottom: 16, ...Shadows.card,
   },
-  statLabel: {
-    color: '#cbd5e1',
-    fontSize: 12,
-    marginTop: 6,
-  },
-  accountCard: {
-    backgroundColor: '#ffffff',
-    borderRadius: 28,
-    padding: 22,
-    marginBottom: 18,
-  },
-  accountTitle: {
-    color: '#0f172a',
-    fontSize: 16,
-    fontWeight: '800',
-    marginBottom: 16,
-  },
+  cardTitle: { color: Colors.brandDark, fontSize: 16, fontWeight: '800', fontFamily: 'Inter', marginBottom: 16 },
+
   infoRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    marginBottom: 14,
+    flexDirection: 'row', justifyContent: 'space-between',
+    paddingVertical: 10, borderBottomWidth: 1, borderBottomColor: 'rgba(144,153,184,0.15)',
   },
-  infoLabel: {
-    color: '#64748b',
-    fontSize: 13,
+  infoLabel: { color: Colors.slate, fontSize: 13, fontFamily: 'Inter' },
+  infoValue: { color: Colors.brandDark, fontSize: 13, fontWeight: '600', fontFamily: 'Inter', maxWidth: '55%', textAlign: 'right' },
+
+  menuItem: { flexDirection: 'row', alignItems: 'center', paddingVertical: 14 },
+  menuItemBorder: { borderBottomWidth: 1, borderBottomColor: 'rgba(144,153,184,0.15)' },
+  menuIcon: {
+    width: 42, height: 42, borderRadius: 14,
+    backgroundColor: Colors.backgroundAlt, alignItems: 'center', justifyContent: 'center', marginRight: 14,
   },
-  infoValue: {
-    color: '#0f172a',
-    fontSize: 13,
-    fontWeight: '700',
-    maxWidth: '55%',
-    textAlign: 'right',
-  },
-  optionsCard: {
-    backgroundColor: '#ffffff',
-    borderRadius: 28,
-    paddingVertical: 8,
-  },
-  optionRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingVertical: 16,
-    paddingHorizontal: 18,
-    borderBottomWidth: 1,
-    borderBottomColor: '#e2e8f0',
-  },
-  optionIcon: {
-    width: 42,
-    height: 42,
-    borderRadius: 14,
-    backgroundColor: '#eff6ff',
-    marginRight: 14,
-  },
-  optionTextGroup: {
-    flex: 1,
-  },
-  optionLabel: {
-    color: '#0f172a',
-    fontSize: 15,
-    fontWeight: '700',
-    marginBottom: 4,
-  },
-  optionSubtitle: {
-    color: '#64748b',
-    fontSize: 13,
-  },
-  optionArrow: {
-    color: '#94a3b8',
-    fontSize: 18,
-  },
+  menuIconText: { fontSize: 20 },
+  menuTextGroup: { flex: 1 },
+  menuLabel: { color: Colors.brandDark, fontSize: 15, fontWeight: '700', fontFamily: 'Inter', marginBottom: 2 },
+  menuLabelLogout: { color: Colors.error },
+  menuSubtitle: { color: Colors.slate, fontSize: 12, fontFamily: 'Inter' },
+  menuArrow: { color: Colors.muted, fontSize: 20 },
 });

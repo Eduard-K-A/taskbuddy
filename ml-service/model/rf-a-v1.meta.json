@@ -1,0 +1,39 @@
+{
+  "model_version": "rf-a-v1",
+  "trained_at": "2026-07-15T08:34:45.711527+00:00",
+  "training_rows": 40000,
+  "input_columns": [
+    "skills_match",
+    "distance_km",
+    "provider_avg_rating",
+    "provider_completed_jobs",
+    "provider_availability",
+    "job_idle_duration_hrs",
+    "provider_response_time_hrs",
+    "provider_years_experience",
+    "hour_posted",
+    "provider_skill_category",
+    "day_of_week",
+    "job_urgency",
+    "job_description",
+    "provider_bio"
+  ],
+  "rf_params": {
+    "n_estimators": 50,
+    "max_depth": 10,
+    "max_features": "sqrt",
+    "min_samples_split": 5,
+    "class_weight": "balanced",
+    "random_state": 42
+  },
+  "holdout_eval": {
+    "accuracy": 0.8155,
+    "f1_macro": 0.8123,
+    "roc_auc": 0.882,
+    "test_rows": 12000
+  },
+  "fit_seconds": 3.5,
+  "sklearn_version": "1.8.0",
+  "pandas_version": "3.0.3",
+  "python_version": "3.14.5"
+}
