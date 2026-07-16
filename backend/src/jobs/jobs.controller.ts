@@ -1,0 +1,75 @@
+import {
+  Body,
+  Controller,
+  Get,
+  Param,
+  ParseUUIDPipe,
+  Post,
+  Query,
+  UseGuards,
+} from '@nestjs/common';
+import { JwtAuthGuard } from '../auth/jwt-auth.guard';
+import { Roles } from '../auth/roles.decorator';
+import { CurrentUser } from '../auth/current-user.decorator';
+import { JobsService } from './jobs.service';
+import { BrowseJobsQueryDto, CreateJobDto } from './dto/jobs.dto';
+import type { Profile } from '../common/types';
+
+@Controller('jobs')
+@UseGuards(JwtAuthGuard)
+export class JobsController {
+  constructor(private readonly jobsService: JobsService) {}
+
+  @Post()
+  @Roles('client')
+  create(@CurrentUser() user: Profile, @Body() dto: CreateJobDto) {
+    return this.jobsService.create(user, dto);
+  }
+
+  @Get()
+  @Roles('provider')
+  browse(@Query() query: BrowseJobsQueryDto) {
+    return this.jobsService.browse(query);
+  }
+
+  @Get('mine')
+  @Roles('client')
+  mine(@CurrentUser() user: Profile) {
+    return this.jobsService.mine(user);
+  }
+
+  @Get('assigned')
+  @Roles('provider')
+  assigned(@CurrentUser() user: Profile) {
+    return this.jobsService.assigned(user);
+  }
+
+  @Get(':id')
+  getById(
+    @CurrentUser() user: Profile,
+    @Param('id', ParseUUIDPipe) id: string,
+  ) {
+    return this.jobsService.getById(user, id);
+  }
+
+  @Post(':id/cancel')
+  @Roles('client')
+  cancel(@CurrentUser() user: Profile, @Param('id', ParseUUIDPipe) id: string) {
+    return this.jobsService.cancel(user, id);
+  }
+
+  @Post(':id/start')
+  @Roles('provider')
+  start(@CurrentUser() user: Profile, @Param('id', ParseUUIDPipe) id: string) {
+    return this.jobsService.start(user, id);
+  }
+
+  @Post(':id/complete')
+  @Roles('client')
+  complete(
+    @CurrentUser() user: Profile,
+    @Param('id', ParseUUIDPipe) id: string,
+  ) {
+    return this.jobsService.complete(user, id);
+  }
+}
