@@ -47,17 +47,23 @@ describe("formatDate", () => {
 });
 
 describe("booking status mapping", () => {
-  it("groups in-flight statuses as Active", () => {
-    expect(BOOKING_STATUS_DISPLAY.CONFIRMED.label).toBe("Active");
-    expect(BOOKING_STATUS_DISPLAY.IN_PROGRESS.label).toBe("Active");
-    expect(BOOKING_STATUS_DISPLAY.COMPLETED_PENDING_CONFIRMATION.label).toBe("Active");
+  it("maps every real job_status to a distinct label", () => {
+    expect(BOOKING_STATUS_DISPLAY.open.label).toBe("Open");
+    expect(BOOKING_STATUS_DISPLAY.recommending.label).toBe("Matching");
+    expect(BOOKING_STATUS_DISPLAY.assigned.label).toBe("Assigned");
+    expect(BOOKING_STATUS_DISPLAY.in_progress.label).toBe("In Progress");
+    expect(BOOKING_STATUS_DISPLAY.completed.label).toBe("Completed");
+    expect(BOOKING_STATUS_DISPLAY.cancelled.label).toBe("Cancelled");
+    expect(BOOKING_STATUS_DISPLAY.expired.label).toBe("Expired");
   });
   it("only allows cancelling bookings still in flight", () => {
-    expect(isCancellableBooking("PENDING")).toBe(true);
-    expect(isCancellableBooking("CONFIRMED")).toBe(true);
-    expect(isCancellableBooking("COMPLETED")).toBe(false);
-    expect(isCancellableBooking("DISPUTED")).toBe(false);
-    expect(isCancellableBooking("CANCELLED")).toBe(false);
+    expect(isCancellableBooking("open")).toBe(true);
+    expect(isCancellableBooking("recommending")).toBe(true);
+    expect(isCancellableBooking("assigned")).toBe(true);
+    expect(isCancellableBooking("in_progress")).toBe(true);
+    expect(isCancellableBooking("completed")).toBe(false);
+    expect(isCancellableBooking("cancelled")).toBe(false);
+    expect(isCancellableBooking("expired")).toBe(false);
   });
 });
 
@@ -76,17 +82,17 @@ describe("row adapters", () => {
     });
   });
 
-  it("maps a customer without rating", () => {
+  it("maps a suspended client without rating", () => {
     const u: AdminUser = {
-      id: "u-002", email: "j.kim@example.com", role: "homeowner",
-      createdAt: "2024-02-22", name: "Jamie Kim", status: "BANNED",
-      jobsCompleted: 1, rating: null,
+      id: "u-002", email: "j.kim@example.com", role: "client",
+      createdAt: "2024-02-22", name: "Jamie Kim", status: "SUSPENDED",
+      jobsCompleted: 0, rating: null,
     };
     const row = toUserRow(u);
     expect(row.role).toBe("👤 Customer");
     expect(row.avClass).toBe("av-green");
-    expect(row.activity).toBe("1 job");
-    expect(row.statusClass).toBe("badge-banned");
+    expect(row.activity).toBe("0 jobs");
+    expect(row.statusClass).toBe("badge-suspended");
   });
 
   it("maps verification docs to the dotted display string", () => {
@@ -116,12 +122,12 @@ describe("row adapters", () => {
   it("maps bookings with cancellability", () => {
     const b: AdminBooking = {
       id: "BK-0090", customerName: "Jamie Kim", providerName: "Pat Morgan",
-      service: "Plumbing Repair", status: "CONFIRMED",
-      scheduledDate: "2026-04-12", amount: 850,
+      service: "Plumbing Repair", status: "assigned",
+      scheduledDate: "2026-04-12", amount: 0,
     };
     const row = toBookingRow(b);
-    expect(row.status).toBe("Active");
+    expect(row.status).toBe("Assigned");
     expect(row.cancellable).toBe(true);
-    expect(toBookingRow({ ...b, status: "DISPUTED" }).cancellable).toBe(false);
+    expect(toBookingRow({ ...b, status: "completed" }).cancellable).toBe(false);
   });
 });

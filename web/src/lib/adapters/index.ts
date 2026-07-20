@@ -52,7 +52,6 @@ export function formatDate(iso: string): string {
 export const USER_STATUS_DISPLAY: Record<UserStatus, { label: string; badgeClass: string }> = {
   ACTIVE:    { label: "Active",    badgeClass: "badge-active" },
   SUSPENDED: { label: "Suspended", badgeClass: "badge-suspended" },
-  BANNED:    { label: "Banned",    badgeClass: "badge-banned" },
 };
 
 export const TRANSACTION_STATUS_DISPLAY: Record<TransactionStatus, { label: string; badgeClass: string }> = {
@@ -62,22 +61,21 @@ export const TRANSACTION_STATUS_DISPLAY: Record<TransactionStatus, { label: stri
   REFUNDED:  { label: "Refunded",  badgeClass: "badge-refunded" },
 };
 
-/** Groups the mobile app's granular booking statuses into the admin view.
- *  CONFIRMED / IN_PROGRESS / COMPLETED_PENDING_CONFIRMATION all read as
- *  "Active" work-in-flight to an admin. */
+/** Mirrors the real `job_status` enum — each status gets its own label so
+ *  the admin view reflects the real lifecycle, not a re-collapsed one. */
 export const BOOKING_STATUS_DISPLAY: Record<BookingStatus, { label: string; badgeClass: string }> = {
-  PENDING:                          { label: "Pending",   badgeClass: "badge-pending" },
-  CONFIRMED:                        { label: "Active",    badgeClass: "badge-active" },
-  IN_PROGRESS:                      { label: "Active",    badgeClass: "badge-active" },
-  COMPLETED_PENDING_CONFIRMATION:   { label: "Active",    badgeClass: "badge-active" },
-  COMPLETED:                        { label: "Completed", badgeClass: "badge-completed" },
-  CANCELLED:                        { label: "Cancelled", badgeClass: "badge-cancelled" },
-  DISPUTED:                         { label: "Disputed",  badgeClass: "badge-rejected" },
+  open:         { label: "Open",        badgeClass: "badge-pending" },
+  recommending: { label: "Matching",    badgeClass: "badge-processing" },
+  assigned:     { label: "Assigned",    badgeClass: "badge-active" },
+  in_progress:  { label: "In Progress", badgeClass: "badge-active" },
+  completed:    { label: "Completed",   badgeClass: "badge-completed" },
+  cancelled:    { label: "Cancelled",   badgeClass: "badge-cancelled" },
+  expired:      { label: "Expired",     badgeClass: "badge-rejected" },
 };
 
-/** Bookings an admin can still cancel. */
+/** Bookings an admin can still cancel — anything not yet in a terminal state. */
 export function isCancellableBooking(status: BookingStatus): boolean {
-  return status === "PENDING" || status === "CONFIRMED" || status === "IN_PROGRESS";
+  return status === "open" || status === "recommending" || status === "assigned" || status === "in_progress";
 }
 
 // ─── Display row types (what components render) ───────────────────────────────
