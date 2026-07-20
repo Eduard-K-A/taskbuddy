@@ -155,6 +155,7 @@ next-env.d.ts
 AGENTS*
 CLAUDE*
 .claude/*
+docs/superpowers/
 # but DO commit env templates
 !.env.example
 
