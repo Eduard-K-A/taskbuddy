@@ -5,15 +5,25 @@ import { Search, XCircle } from "lucide-react";
 import { useApp } from "@/context/AppContext";
 import clsx from "clsx";
 
-type StatusFilter = "all" | "Pending" | "Active" | "Completed" | "Cancelled" | "Disputed";
+type StatusFilter =
+  | "all"
+  | "Open"
+  | "Matching"
+  | "Assigned"
+  | "In Progress"
+  | "Completed"
+  | "Cancelled"
+  | "Expired";
 
 const STATUS_ACCENTS: Record<StatusFilter, string> = {
   all: "#6366f1",
-  Pending: "#f59e0b",
-  Active: "#8b5cf6",
+  Open: "#f59e0b",
+  Matching: "#60a5fa",
+  Assigned: "#8b5cf6",
+  "In Progress": "#8b5cf6",
   Completed: "#22c55e",
   Cancelled: "#ef4444",
-  Disputed: "var(--danger-text)",
+  Expired: "var(--danger-text)",
 };
 
 export function BookingsPage() {
@@ -32,11 +42,13 @@ export function BookingsPage() {
 
   const counts: Record<StatusFilter, number> = {
     all: bookings.length,
-    Pending: bookings.filter((b) => b.status === "Pending").length,
-    Active: bookings.filter((b) => b.status === "Active").length,
+    Open: bookings.filter((b) => b.status === "Open").length,
+    Matching: bookings.filter((b) => b.status === "Matching").length,
+    Assigned: bookings.filter((b) => b.status === "Assigned").length,
+    "In Progress": bookings.filter((b) => b.status === "In Progress").length,
     Completed: bookings.filter((b) => b.status === "Completed").length,
     Cancelled: bookings.filter((b) => b.status === "Cancelled").length,
-    Disputed: bookings.filter((b) => b.status === "Disputed").length,
+    Expired: bookings.filter((b) => b.status === "Expired").length,
   };
 
   return (
@@ -47,7 +59,7 @@ export function BookingsPage() {
       </div>
 
       <div className="flex gap-2.5 flex-wrap mb-4">
-        {(["all", "Pending", "Active", "Completed", "Cancelled", "Disputed"] as StatusFilter[]).map((s) => {
+        {(["all", "Open", "Matching", "Assigned", "In Progress", "Completed", "Cancelled", "Expired"] as StatusFilter[]).map((s) => {
           const accent = STATUS_ACCENTS[s];
           return (
             <button key={s} onClick={() => setStatusFilter(s)}
