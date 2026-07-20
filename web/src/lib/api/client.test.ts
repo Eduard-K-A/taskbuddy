@@ -29,7 +29,7 @@ describe("client", () => {
 
     await client.get("/admin/users");
 
-    const [, init] = fetchMock.mock.calls[0];
+    const [, init] = fetchMock.mock.calls[0] as unknown as [string, RequestInit | undefined];
     expect((init?.headers as Record<string, string>).Authorization).toBe("Bearer tok-abc");
   });
 
@@ -39,7 +39,7 @@ describe("client", () => {
 
     await client.get("/admin/users");
 
-    const [, init] = fetchMock.mock.calls[0];
+    const [, init] = fetchMock.mock.calls[0] as unknown as [string, RequestInit | undefined];
     expect((init?.headers as Record<string, string>).Authorization).toBeUndefined();
   });
 
