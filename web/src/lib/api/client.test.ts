@@ -2,32 +2,6 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { ApiError, client } from "./client";
 import { clearStoredSession, setStoredSession } from "./session";
 
-// Polyfill localStorage if not fully available
-if (typeof window !== "undefined" && typeof window.localStorage?.clear !== "function") {
-  const storage: { [key: string]: string } = {};
-  (window as any).localStorage = {
-    getItem: (key: string) => storage[key] || null,
-    setItem: (key: string, value: string) => {
-      storage[key] = String(value);
-    },
-    removeItem: (key: string) => {
-      delete storage[key];
-    },
-    clear: () => {
-      Object.keys(storage).forEach((key) => {
-        delete storage[key];
-      });
-    },
-    get length() {
-      return Object.keys(storage).length;
-    },
-    key: (index: number) => {
-      const keys = Object.keys(storage);
-      return keys[index] || null;
-    },
-  };
-}
-
 function jsonResponse(body: unknown, status = 200): Response {
   return {
     ok: status >= 200 && status < 300,

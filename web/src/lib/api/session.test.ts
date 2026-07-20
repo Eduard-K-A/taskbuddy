@@ -1,32 +1,6 @@
 import { beforeEach, describe, expect, it } from "vitest";
 import { clearStoredSession, getStoredSession, setStoredSession } from "./session";
 
-// Polyfill localStorage if not fully available
-if (typeof window !== "undefined" && typeof window.localStorage?.clear !== "function") {
-  const storage: { [key: string]: string } = {};
-  (window as any).localStorage = {
-    getItem: (key: string) => storage[key] || null,
-    setItem: (key: string, value: string) => {
-      storage[key] = String(value);
-    },
-    removeItem: (key: string) => {
-      delete storage[key];
-    },
-    clear: () => {
-      Object.keys(storage).forEach((key) => {
-        delete storage[key];
-      });
-    },
-    get length() {
-      return Object.keys(storage).length;
-    },
-    key: (index: number) => {
-      const keys = Object.keys(storage);
-      return keys[index] || null;
-    },
-  };
-}
-
 describe("session storage", () => {
   beforeEach(() => {
     localStorage.clear();

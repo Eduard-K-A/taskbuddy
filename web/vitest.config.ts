@@ -10,5 +10,14 @@ export default defineConfig({
   test: {
     include: ["src/**/*.test.ts"],
     environment: "jsdom",
+    // Node 25+ ships an experimental native `localStorage` global that
+    // shadows jsdom's own implementation, breaking session/client tests
+    // that rely on it (see web/src/lib/api/session.test.ts). Disabling it
+    // for vitest's worker processes lets jsdom provide a working one.
+    poolOptions: {
+      forks: {
+        execArgv: ["--no-experimental-webstorage"],
+      },
+    },
   },
 });
