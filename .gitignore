@@ -155,6 +155,7 @@ next-env.d.ts
 AGENTS*
 CLAUDE*
 .claude/*
+docs/superpowers/
 # but DO commit env templates
 !.env.example
 
@@ -163,3 +164,4 @@ ml-service/taskbuddy_synthetic_dataset.csv
 ml-service/.venv/
 ml-service/__pycache__/
 ml-service/**/__pycache__/
+docs/superpowers/
