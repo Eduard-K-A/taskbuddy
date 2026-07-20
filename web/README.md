@@ -77,19 +77,27 @@ pages/context → services (async fns) → mock/db.ts   (today)
 - Every service function contains a `// later: client.get/post/patch(...)` comment showing its real-backend implementation.
 - Services simulate ~150ms latency so loading states are genuinely exercised.
 
-## Connecting the Real Backend
+## Real Backend Integration
 
-When `apps/backend` ships its admin endpoints:
+Login, Users, Bookings, and Reports/Analytics call the live backend
+(`https://taskbuddy-1d48.onrender.com` by default — override with
+`NEXT_PUBLIC_API_URL`). Verifications and Transactions still run on mock
+data (`src/lib/mock/db.ts`) — no backend tables exist for those yet; see
+`docs/superpowers/specs/2026-07-20-web-backend-integration-design.md` for
+the full rationale (kept locally, not committed to this repo).
 
-1. Set the environment variables:
-   ```bash
-   NEXT_PUBLIC_USE_MOCK=false
-   NEXT_PUBLIC_API_URL=http://localhost:3001   # or the deployed API URL
-   ```
-2. In `src/lib/services/index.ts`, replace each function body with the one-line `client` call already noted in its `// later:` comment.
-3. Nothing else changes — domain types, adapters, context, and every page keep working as-is.
+To run against a different backend URL (e.g. a local `backend/` instance):
 
-Domain types in `lib/domain.ts` define the platform-wide contracts (`SharedUser`, `SharedBooking`) plus admin-only types, until the backend defines authoritative versions.
+```bash
+NEXT_PUBLIC_USE_MOCK=false
+NEXT_PUBLIC_API_URL=http://localhost:3001
+```
+
+Domain types in `lib/domain.ts` mirror the backend's real enums (`user_role`,
+`job_status` — see `backend/BACKEND_SCHEMA.md` §4). Revenue figures and the
+Bookings page's `amount` column are fixed placeholders, not real data — the
+backend has no payments/pricing system (deliberately out of scope, see
+`BACKEND_SCHEMA.md` §14).
 
 ## npm audit note
 
