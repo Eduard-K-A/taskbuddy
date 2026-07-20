@@ -20,7 +20,7 @@ const STATUS_ACCENTS: Record<StatusFilter, string> = {
   Open: "#f59e0b",
   Matching: "#60a5fa",
   Assigned: "#8b5cf6",
-  "In Progress": "#8b5cf6",
+  "In Progress": "#a855f7",
   Completed: "#22c55e",
   Cancelled: "#ef4444",
   Expired: "var(--danger-text)",
