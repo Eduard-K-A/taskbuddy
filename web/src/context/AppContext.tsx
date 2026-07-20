@@ -122,7 +122,7 @@ interface AppState {
   // mutations
   approveVerification: (id: string) => Promise<void>;
   rejectVerification: (id: string) => Promise<void>;
-  setUserStatus: (id: string, status: "Active" | "Suspended" | "Banned") => Promise<void>;
+  setUserStatus: (id: string, status: "Active" | "Suspended") => Promise<void>;
   cancelBooking: (id: string) => Promise<void>;
 
   // preferences
@@ -136,10 +136,9 @@ interface AppState {
 
 const AppContext = createContext<AppState | null>(null);
 
-const STATUS_TO_DOMAIN: Record<"Active" | "Suspended" | "Banned", UserStatus> = {
+const STATUS_TO_DOMAIN: Record<"Active" | "Suspended", UserStatus> = {
   Active: "ACTIVE",
   Suspended: "SUSPENDED",
-  Banned: "BANNED",
 };
 
 export function AppProvider({ children }: { children: ReactNode }) {
@@ -263,7 +262,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
   );
 
   const setUserStatus = useCallback(
-    async (id: string, status: "Active" | "Suspended" | "Banned") => {
+    async (id: string, status: "Active" | "Suspended") => {
       setDomainUsers(await services.setUserStatus(id, STATUS_TO_DOMAIN[status]));
     },
     [],
