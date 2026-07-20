@@ -1,26 +1,9 @@
 // ─── Domain types ─────────────────────────────────────────────────────────────
-// "Backend-shaped" data: numbers, enums, ISO dates. SharedUser/SharedBooking
-// are the platform-wide contracts (formerly @taskbuddy/shared-types, inlined
-// here when that workspace package was removed in the repo restructure);
-// admin-only types extend them until the backend defines authoritative
-// versions.
-
-interface SharedUser {
-  id: string;
-  email: string;
-  role: "homeowner" | "provider" | "admin";
-  createdAt: string;
-}
-
-interface SharedBooking {
-  id: string;
-  customerId: string;
-  providerId: string;
-  status: "PENDING" | "CONFIRMED" | "IN_PROGRESS" | "COMPLETED_PENDING_CONFIRMATION" | "COMPLETED" | "CANCELLED" | "DISPUTED";
-  serviceCategory: string;
-  scheduledDate: string;
-  amount: number;
-}
+// "Backend-shaped" data: numbers, enums, ISO dates. UserRole/BookingStatus
+// mirror the real Supabase enums (`user_role`, `job_status` — see
+// backend/BACKEND_SCHEMA.md §4). Verification/Transaction stay invented:
+// no backend tables exist for them yet (see the non-goals in
+// docs/superpowers/specs/2026-07-20-web-backend-integration-design.md).
 
 export type Page =
   | "dashboard"
@@ -33,16 +16,23 @@ export type Page =
 
 // ─── Users ────────────────────────────────────────────────────────────────────
 
-export type UserRole = SharedUser["role"]; // "homeowner" | "provider" | "admin"
-export type UserStatus = "ACTIVE" | "SUSPENDED" | "BANNED";
+export type UserRole = "client" | "provider" | "admin";
+/** The real schema only has `deactivated_at` — no separate "banned" tier. */
+export type UserStatus = "ACTIVE" | "SUSPENDED";
 
-/** Admin view of a user: the shared User plus moderation/activity fields the
- *  admin endpoints will return joined-in. */
-export interface AdminUser extends SharedUser {
+/** Admin view of a user: the `admin_user_overview` row (migration 0005),
+ *  remapped for display. */
+export interface AdminUser {
+  id: string;
+  email: string;
+  role: UserRole;
+  createdAt: string;
   name: string;
   status: UserStatus;
+  /** Provider's completed-job count; 0 for clients — the view has no
+   *  per-client completed-job count today. */
   jobsCompleted: number;
-  /** Provider average rating; null for customers. */
+  /** Provider average rating; null for clients. */
   rating: number | null;
 }
 
@@ -77,9 +67,15 @@ export interface Transaction {
 
 // ─── Bookings ─────────────────────────────────────────────────────────────────
 
-/** Status enum comes straight from the shared Booking contract the mobile app
- *  will produce. */
-export type BookingStatus = SharedBooking["status"];
+/** Mirrors the real `job_status` enum (BACKEND_SCHEMA.md §4). */
+export type BookingStatus =
+  | "open"
+  | "recommending"
+  | "assigned"
+  | "in_progress"
+  | "completed"
+  | "cancelled"
+  | "expired";
 
 export interface AdminBooking {
   id: string;
@@ -87,7 +83,13 @@ export interface AdminBooking {
   providerName: string;
   service: string;
   status: BookingStatus;
-  scheduledDate: string; // ISO date
+  /** The job's `posted_at` — the real schema has no scheduling/time-slot
+   *  concept (BACKEND_SCHEMA.md §14), so this is "when posted", not "when
+   *  scheduled for". */
+  scheduledDate: string;
+  /** Placeholder — the real `jobs` table has no price field (payments are
+   *  out of scope). Not sourced from the backend; see the design spec's
+   *  non-goals. */
   amount: number;
 }
 

@@ -295,4 +295,45 @@ describe('AdminService', () => {
       expect(result.top_providers).toEqual(providers);
     });
   });
+
+  describe('cancelBooking', () => {
+    it('cancels an open booking', async () => {
+      const updated = { id: 'j1', status: 'cancelled' };
+      const { supabase, calls } = createSupabaseMock({
+        jobs: [
+          { data: { id: 'j1', status: 'open' }, error: null },
+          { data: updated, error: null },
+        ],
+      });
+      const service = new AdminService(supabase);
+
+      const result = await service.cancelBooking('j1');
+
+      expect(result).toEqual(updated);
+      const updateCall = calls.find((c) => c.method === 'update');
+      expect(updateCall?.args[0]).toEqual({ status: 'cancelled' });
+    });
+
+    it('refuses to cancel an already-completed booking', async () => {
+      const { supabase } = createSupabaseMock({
+        jobs: [{ data: { id: 'j1', status: 'completed' }, error: null }],
+      });
+      const service = new AdminService(supabase);
+
+      await expect(service.cancelBooking('j1')).rejects.toThrow(
+        BadRequestException,
+      );
+    });
+
+    it('404s on an unknown booking', async () => {
+      const { supabase } = createSupabaseMock({
+        jobs: [{ data: null, error: null }],
+      });
+      const service = new AdminService(supabase);
+
+      await expect(service.cancelBooking('j404')).rejects.toThrow(
+        NotFoundException,
+      );
+    });
+  });
 });

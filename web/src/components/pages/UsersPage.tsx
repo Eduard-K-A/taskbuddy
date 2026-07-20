@@ -1,18 +1,16 @@
 "use client";
 
 import { useState } from "react";
-import { Search, CheckCircle, Ban, PauseCircle } from "lucide-react";
+import { Search, CheckCircle, PauseCircle } from "lucide-react";
 import { useApp } from "@/context/AppContext";
 import clsx from "clsx";
 
 type RoleFilter = "all" | "provider" | "customer";
-type StatusFilter = "all" | "banned";
 
 export function UsersPage() {
   const { users, setUserStatus } = useApp();
   const [search, setSearch] = useState("");
   const [roleFilter, setRoleFilter] = useState<RoleFilter>("all");
-  const [statusFilter, setStatusFilter] = useState<StatusFilter>("all");
 
   const filtered = users.filter((u) => {
     const matchSearch =
@@ -22,14 +20,12 @@ export function UsersPage() {
       roleFilter === "all" ||
       (roleFilter === "provider" && u.isProvider) ||
       (roleFilter === "customer" && !u.isProvider);
-    const matchStatus = statusFilter === "all" || u.status === "Banned";
-    return matchSearch && matchRole && matchStatus;
+    return matchSearch && matchRole;
   });
 
   const total = users.length;
   const providers = users.filter((u) => u.isProvider).length;
   const customers = users.filter((u) => !u.isProvider).length;
-  const banned = users.filter((u) => u.status === "Banned").length;
 
   return (
     <div>
@@ -40,16 +36,15 @@ export function UsersPage() {
 
       <div className="flex gap-2.5 flex-wrap mb-4">
         {[
-          { icon: "👥", label: "Total Users", val: total, accent: "#6366f1", role: "all" as RoleFilter, status: "all" as StatusFilter },
-          { icon: "🔧", label: "Providers", val: providers, accent: "#8b5cf6", role: "provider" as RoleFilter, status: "all" as StatusFilter },
-          { icon: "👤", label: "Customers", val: customers, accent: "#22c55e", role: "customer" as RoleFilter, status: "all" as StatusFilter },
-          { icon: "🚫", label: "Banned", val: banned, accent: "#ef4444", role: "all" as RoleFilter, status: "banned" as StatusFilter },
+          { icon: "👥", label: "Total Users", val: total, accent: "#6366f1", role: "all" as RoleFilter },
+          { icon: "🔧", label: "Providers", val: providers, accent: "#8b5cf6", role: "provider" as RoleFilter },
+          { icon: "👤", label: "Customers", val: customers, accent: "#22c55e", role: "customer" as RoleFilter },
         ].map((s) => {
-          const isActive = roleFilter === s.role && statusFilter === s.status;
+          const isActive = roleFilter === s.role;
           return (
           <button
             key={s.label}
-            onClick={() => { setRoleFilter(s.role); setStatusFilter(s.status); }}
+            onClick={() => setRoleFilter(s.role)}
             className="flex items-center gap-2 rounded-xl cursor-pointer transition-opacity hover:opacity-80"
             style={{ padding: "9px 14px", border: `1px solid ${s.accent}33`, background: isActive ? `${s.accent}30` : `${s.accent}18`, fontSize: 11.4, fontFamily: "inherit", outline: isActive ? `1px solid ${s.accent}55` : "none" }}
           >
@@ -74,7 +69,7 @@ export function UsersPage() {
         </div>
         <div className="inline-flex rounded-xl p-1 gap-1" style={{ background: "var(--chip-bg)" }}>
           {(["all", "provider", "customer"] as RoleFilter[]).map((f) => (
-            <button key={f} onClick={() => { setRoleFilter(f); setStatusFilter("all"); }}
+            <button key={f} onClick={() => setRoleFilter(f)}
               className={clsx("rounded-lg font-medium cursor-pointer transition-all capitalize", roleFilter === f ? "text-indigo-300" : "text-gray-500 hover:text-gray-300")}
               style={{ padding: "5px 12px", fontSize: 11.4, background: roleFilter === f ? "rgba(99,102,241,0.25)" : "transparent", border: "none", fontFamily: "inherit" }}
             >
@@ -146,15 +141,6 @@ export function UsersPage() {
                         style={{ width: 26, height: 26, background: "transparent", border: "none", cursor: u.status === "Suspended" ? "default" : "pointer", color: "#f59e0b" }}
                       >
                         <PauseCircle size={12} />
-                      </button>
-                      <button
-                        title="Ban"
-                        onClick={() => setUserStatus(u.id, "Banned")}
-                        disabled={u.status === "Banned"}
-                        className="flex items-center justify-center rounded-lg transition-colors hover:bg-white/10 disabled:opacity-30"
-                        style={{ width: 26, height: 26, background: "transparent", border: "none", cursor: u.status === "Banned" ? "default" : "pointer", color: "var(--danger-text)" }}
-                      >
-                        <Ban size={12} />
                       </button>
                     </div>
                   </td>

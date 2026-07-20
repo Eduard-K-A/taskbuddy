@@ -43,6 +43,11 @@ export class AdminController {
     return this.adminService.listBookings(query);
   }
 
+  @Post('bookings/:id/cancel')
+  cancelBooking(@Param('id', ParseUUIDPipe) id: string) {
+    return this.adminService.cancelBooking(id);
+  }
+
   @Get('analytics/summary')
   analyticsSummary() {
     return this.adminService.analyticsSummary();

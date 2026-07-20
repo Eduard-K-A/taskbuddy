@@ -90,6 +90,30 @@ export class AdminService {
     return { bookings: data ?? [], total: count ?? 0 };
   }
 
+  /** Cancels a booking (story #31 extension) — refuses if it's already in a
+   *  terminal state. Relies on the existing `log_job_status_change` trigger
+   *  for the `job_status_history` audit row; no migration needed. */
+  async cancelBooking(jobId: string) {
+    const { data: job, error } = await this.supabase.admin
+      .from('jobs')
+      .select('id, status')
+      .eq('id', jobId)
+      .maybeSingle();
+    if (error) throw new BadRequestException(error.message);
+    if (!job) throw new NotFoundException('Booking not found');
+    if (['completed', 'cancelled', 'expired'].includes(job.status)) {
+      throw new BadRequestException(`Booking is already ${job.status}`);
+    }
+    const { data, error: updateError } = await this.supabase.admin
+      .from('jobs')
+      .update({ status: 'cancelled' })
+      .eq('id', jobId)
+      .select('*')
+      .single();
+    if (updateError) throw new BadRequestException(updateError.message);
+    return data;
+  }
+
   /**
    * Aggregates for the Reports page (story #32): booking trends, category
    * breakdown, provider performance. Computed in-process — fine at current

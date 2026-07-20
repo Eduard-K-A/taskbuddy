@@ -122,7 +122,7 @@ interface AppState {
   // mutations
   approveVerification: (id: string) => Promise<void>;
   rejectVerification: (id: string) => Promise<void>;
-  setUserStatus: (id: string, status: "Active" | "Suspended" | "Banned") => Promise<void>;
+  setUserStatus: (id: string, status: "Active" | "Suspended") => Promise<void>;
   cancelBooking: (id: string) => Promise<void>;
 
   // preferences
@@ -136,20 +136,21 @@ interface AppState {
 
 const AppContext = createContext<AppState | null>(null);
 
-const STATUS_TO_DOMAIN: Record<"Active" | "Suspended" | "Banned", UserStatus> = {
+const STATUS_TO_DOMAIN: Record<"Active" | "Suspended", UserStatus> = {
   Active: "ACTIVE",
   Suspended: "SUSPENDED",
-  Banned: "BANNED",
 };
 
 export function AppProvider({ children }: { children: ReactNode }) {
-  // session / navigation
-  const [isLoggedIn, setIsLoggedIn] = useState(false);
+  // session / navigation — lazily restored from a stored token on first
+  // render (same SSR-safe pattern as loadStoredPrefs() below: null on the
+  // server, resolved on the client, no hydration mismatch since neither
+  // ever renders before login).
+  const [isLoggedIn, setIsLoggedIn] = useState(() => services.restoreSession() !== null);
   const [activePage, setActivePage] = useState<Page>("dashboard");
-  const [adminProfile, setAdminProfile] = useState<AdminProfile>({
-    name: "Super Admin",
-    email: "admin@taskbuddy.io",
-  });
+  const [adminProfile, setAdminProfile] = useState<AdminProfile>(
+    () => services.restoreSession() ?? { name: "Super Admin", email: "admin@taskbuddy.io" },
+  );
 
   // domain data
   const [loading, setLoading] = useState(true);
@@ -174,40 +175,55 @@ export function AppProvider({ children }: { children: ReactNode }) {
     ...loadStoredPrefs()?.settings,
   }));
 
-  // ── initial load ──
+  // ── initial load — only once a session exists ──
   useEffect(() => {
+    if (!isLoggedIn) {
+      setLoading(false);
+      return;
+    }
     let cancelled = false;
     (async () => {
-      const [users, verifs, txns, bookings, stats, revenue, bookVol, categories, activity, providers] =
-        await Promise.all([
-          services.getUsers(),
-          services.getVerifications(),
-          services.getTransactions(),
-          services.getBookings(),
-          services.getDashboardStats(),
-          services.getRevenueSeries(),
-          services.getBookingsSeries(),
-          services.getBookingsByCategory(),
-          services.getRecentActivity(),
-          services.getTopProviders(),
-        ]);
-      if (cancelled) return;
-      setDomainUsers(users);
-      setDomainVerifications(verifs);
-      setDomainTransactions(txns);
-      setDomainBookings(bookings);
-      setDashboardStats(stats);
-      setRevenueSeries(revenue);
-      setBookingsSeries(bookVol);
-      setBookingsByCategory(categories);
-      setRecentActivity(activity);
-      setTopProviders(providers);
-      setLoading(false);
+      setLoading(true);
+      try {
+        const [users, verifs, txns, bookings, stats, revenue, bookVol, categories, activity, providers] =
+          await Promise.all([
+            services.getUsers(),
+            services.getVerifications(),
+            services.getTransactions(),
+            services.getBookings(),
+            services.getDashboardStats(),
+            services.getRevenueSeries(),
+            services.getBookingsSeries(),
+            services.getBookingsByCategory(),
+            services.getRecentActivity(),
+            services.getTopProviders(),
+          ]);
+        if (cancelled) return;
+        setDomainUsers(users);
+        setDomainVerifications(verifs);
+        setDomainTransactions(txns);
+        setDomainBookings(bookings);
+        setDashboardStats(stats);
+        setRevenueSeries(revenue);
+        setBookingsSeries(bookVol);
+        setBookingsByCategory(categories);
+        setRecentActivity(activity);
+        setTopProviders(providers);
+        setLoading(false);
+      } catch (err) {
+        if (cancelled) return;
+        // An expired/invalid token surfaces here as a 401/403 — force back
+        // to the login screen instead of showing an empty dashboard.
+        if (err instanceof services.ApiError && (err.status === 401 || err.status === 403)) {
+          setIsLoggedIn(false);
+        }
+        setLoading(false);
+      }
     })();
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [isLoggedIn]);
 
   // ── preferences: persist on change ──
   useEffect(() => {
@@ -223,11 +239,16 @@ export function AppProvider({ children }: { children: ReactNode }) {
   // ── session ──
   const login = useCallback(async (email: string, password: string) => {
     const ok = await services.login(email, password);
-    if (ok) setIsLoggedIn(true);
+    if (ok) {
+      const profile = services.restoreSession();
+      if (profile) setAdminProfile(profile);
+      setIsLoggedIn(true);
+    }
     return ok;
   }, []);
 
   const logout = useCallback(() => {
+    void services.logout();
     setIsLoggedIn(false);
     setActivePage("dashboard");
   }, []);
@@ -263,7 +284,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
   );
 
   const setUserStatus = useCallback(
-    async (id: string, status: "Active" | "Suspended" | "Banned") => {
+    async (id: string, status: "Active" | "Suspended") => {
       setDomainUsers(await services.setUserStatus(id, STATUS_TO_DOMAIN[status]));
     },
     [],
