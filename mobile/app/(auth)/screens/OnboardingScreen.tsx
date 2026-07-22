@@ -22,7 +22,7 @@ import {
   View,
   ViewToken,
 } from 'react-native';
-import { Colors, Radii, Shadows, Sizes, Spacing } from '../../../src/constants/theme';
+import { Colors, Radii, Shadows, Spacing } from '../../../src/constants/theme';
 
 const { width: W } = Dimensions.get('window');
 
@@ -173,10 +173,6 @@ export default function OnboardingScreen({ onFinish, onLogin }: OnboardingScreen
         </TouchableOpacity>
       </View>
 
-      {/* Gesture bar */}
-      <View style={styles.gestureBarContainer} pointerEvents="none">
-        <View style={styles.gestureBar} />
-      </View>
     </View>
   );
 }
@@ -343,14 +339,4 @@ const styles = StyleSheet.create({
     letterSpacing: 0.3,
   },
 
-  gestureBarContainer: {
-    alignItems: 'center',
-    paddingBottom: 8,
-  },
-  gestureBar: {
-    width: Sizes.gestureBarWidth,
-    height: Sizes.gestureBarHeight,
-    borderRadius: Radii.gestureBar,
-    backgroundColor: Colors.gestureBar,
-  },
 });

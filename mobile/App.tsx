@@ -3,8 +3,8 @@
  *
  * Architecture:
  *   null role     → Onboarding → Login / Register
- *   'homeowner'   → HO screens with HOBottomNavBar
- *   'provider'    → SP screens with SPBottomNavBar
+ *   'homeowner'   → HO screens with the shared BottomNavBar
+ *   'provider'    → SP screens with the shared BottomNavBar
  *
  * DEMO MODE: Login navigates to the appropriate role screens without
  * real auth. Supabase session listener is preserved for future use.
@@ -13,6 +13,8 @@
 import React, { useEffect, useState } from 'react';
 import { StyleSheet, View } from 'react-native';
 import * as ExpoSplashScreen from 'expo-splash-screen';
+import { CalendarDays, CirclePlus, ClipboardList, Home, LayoutDashboard, UserRound, Wallet } from 'lucide-react-native';
+import RootLayout from './app/layout';
 
 // ── Auth screens ──────────────────────────────────────────────────────────────
 import SplashScreenComponent from './app/SplashScreen';
@@ -45,14 +47,29 @@ import SPNotificationsScreen from './app/(provider)/screens/SPNotificationsScree
 import SPEditProfileScreen from './app/(provider)/screens/SPEditProfileScreen';
 
 // ── Shared navigation components ──────────────────────────────────────────────
-import HOBottomNavBar from './src/components/HOBottomNavBar';
-import SPBottomNavBar from './src/components/SPBottomNavBar';
+import BottomNavBar, { BottomNavItem } from './src/components/BottomNavBar';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 import { Role, HOScreen, SPScreen, DEFAULT_ROLE } from './src/types/navigation';
 
 // ── Supabase (kept for future real-auth) ──────────────────────────────────────
 import supabase from './src/lib/supabase';
+
+const HOMEOWNER_TABS: readonly BottomNavItem<HOScreen>[] = [
+  { key: 'Home', label: 'Home', icon: Home },
+  { key: 'My Jobs', label: 'My Jobs', icon: ClipboardList },
+  { key: 'Create Job', label: 'Create job', icon: CirclePlus, primary: true },
+  { key: 'Wallet', label: 'Wallet', icon: Wallet },
+  { key: 'Profile', label: 'Profile', icon: UserRound },
+];
+
+const PROVIDER_TABS: readonly BottomNavItem<SPScreen>[] = [
+  { key: 'Dashboard', label: 'Dashboard', icon: LayoutDashboard },
+  { key: 'My Jobs', label: 'My Jobs', icon: ClipboardList },
+  { key: 'Calendar', label: 'Calendar', icon: CalendarDays, primary: true },
+  { key: 'Wallet', label: 'Wallet', icon: Wallet },
+  { key: 'Profile', label: 'Profile', icon: UserRound },
+];
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Root app state
@@ -62,7 +79,7 @@ ExpoSplashScreen.preventAutoHideAsync().catch(() => {});
 
 type AuthState = 'splash' | 'onboarding' | 'login' | 'forgotPassword' | 'register' | 'authenticated';
 
-export default function App() {
+function AppContent() {
   const [authState, setAuthState] = useState<AuthState>('splash');
   const [role, setRole] = useState<Role>(DEFAULT_ROLE);
 
@@ -299,7 +316,7 @@ export default function App() {
     return (
       <View style={styles.screen}>
         <View style={styles.tabContent}>{renderHOTabContent()}</View>
-        <HOBottomNavBar activeTab={hoTab} onTabPress={hoNavigate} />
+        <BottomNavBar activeTab={hoTab} tabs={HOMEOWNER_TABS} onTabPress={hoNavigate} />
       </View>
     );
   }
@@ -363,8 +380,17 @@ export default function App() {
   return (
     <View style={styles.screen}>
       <View style={styles.tabContent}>{renderSPTabContent()}</View>
-      <SPBottomNavBar activeTab={spTab} onTabPress={spNavigate} />
+      <BottomNavBar activeTab={spTab} tabs={PROVIDER_TABS} onTabPress={spNavigate} />
     </View>
+  );
+}
+
+/** Every route above is rendered inside the shared responsive root layout. */
+export default function App() {
+  return (
+    <RootLayout>
+      <AppContent />
+    </RootLayout>
   );
 }
 

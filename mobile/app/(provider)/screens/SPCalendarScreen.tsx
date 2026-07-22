@@ -11,6 +11,7 @@
 
 import React, { useState } from 'react';
 import { ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { UserRound } from 'lucide-react-native';
 import { Colors, Radii, Shadows, Sizes, Spacing } from '../../../src/constants/theme';
 
 const DAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
@@ -70,6 +71,10 @@ export default function SPCalendarScreen({ onBack }: SPCalendarScreenProps) {
             <View style={styles.scheduleContent}>
               <Text style={styles.scheduleTime}>{item.time} · {item.duration}</Text>
               <Text style={styles.scheduleTitle}>{item.title}</Text>
+              <View style={styles.scheduleClientRow}>
+                <UserRound size={13} color={Colors.slate} />
+                <Text style={styles.scheduleClientLabel}>{item.client}</Text>
+              </View>
               <Text style={styles.scheduleClient}>👤 {item.client}</Text>
             </View>
             <TouchableOpacity style={styles.detailArrow} activeOpacity={0.8}>
@@ -120,7 +125,9 @@ const styles = StyleSheet.create({
   scheduleContent: { flex: 1, padding: 16 },
   scheduleTime: { color: Colors.muted, fontSize: 12, fontFamily: 'Inter', marginBottom: 4 },
   scheduleTitle: { color: Colors.brandDark, fontSize: 15, fontWeight: '700', fontFamily: 'Inter', marginBottom: 4 },
-  scheduleClient: { color: Colors.slate, fontSize: 12, fontFamily: 'Inter' },
+  scheduleClient: { display: 'none' },
+  scheduleClientRow: { flexDirection: 'row', alignItems: 'center', gap: 5 },
+  scheduleClientLabel: { color: Colors.slate, fontSize: 12, fontFamily: 'Inter' },
   detailArrow: { width: 40, alignItems: 'center', justifyContent: 'center' },
   detailArrowText: { color: Colors.muted, fontSize: 22 },
   emptySlot: { backgroundColor: 'rgba(144,153,184,0.1)', borderRadius: 14, padding: 16, alignItems: 'center', borderWidth: 1, borderColor: 'rgba(144,153,184,0.2)', borderStyle: 'dashed' },

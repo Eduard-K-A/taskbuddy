@@ -25,7 +25,6 @@ import {
   KeyboardAvoidingView,
   Platform,
   Pressable,
-  ScrollView,
   StyleSheet,
   Text,
   TextInput,
@@ -126,12 +125,7 @@ export default function LoginScreen({
         style={styles.flex}
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
       >
-        <ScrollView
-          style={styles.flex}
-          contentContainerStyle={styles.scrollContent}
-          showsVerticalScrollIndicator={false}
-          keyboardShouldPersistTaps="handled"
-        >
+        <View style={styles.loginContent}>
           {/* Logo */}
           <View style={styles.logoSection}>
             {/* Logo mark */}
@@ -255,13 +249,9 @@ export default function LoginScreen({
               <Text style={styles.signUpLink}>Sign Up</Text>
             </Pressable>
           </View>
-        </ScrollView>
+        </View>
       </KeyboardAvoidingView>
 
-      {/* Gesture bar */}
-      <View style={styles.gestureBarWrap} pointerEvents="none">
-        <View style={styles.gestureBar} />
-      </View>
     </View>
   );
 }
@@ -293,7 +283,12 @@ const styles = StyleSheet.create({
   },
 
   // Scroll
-  scrollContent: { paddingHorizontal: 30, paddingTop: 72, paddingBottom: 40 },
+  loginContent: {
+    flex: 1,
+    justifyContent: 'center',
+    paddingHorizontal: 30,
+    paddingVertical: 24,
+  },
 
   // Logo
   logoSection: { marginBottom: 32, alignItems: 'flex-start' },
@@ -411,7 +406,4 @@ const styles = StyleSheet.create({
   signUpPrompt: { fontFamily: 'Inter', fontSize: 14, fontWeight: '500', color: C.muted },
   signUpLink: { fontFamily: 'Roboto', fontSize: 14, fontWeight: '700', color: C.brandTeal },
 
-  // Gesture bar
-  gestureBarWrap: { alignItems: 'center', paddingBottom: 8, paddingTop: 4 },
-  gestureBar: { width: 108, height: 4, borderRadius: 12, backgroundColor: 'rgba(17,27,32,0.25)' },
 });

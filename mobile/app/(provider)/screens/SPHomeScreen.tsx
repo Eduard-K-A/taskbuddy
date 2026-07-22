@@ -279,6 +279,7 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(255,255,255,0.2)', borderRadius: 14,
     paddingHorizontal: 14, paddingVertical: 10,
   },
+  walletBtnContent: { flexDirection: 'row', alignItems: 'center', gap: 6 },
   walletBtnText: { color: Colors.white, fontSize: 13, fontWeight: '600', fontFamily: 'Inter' },
 
   statsRow: { flexDirection: 'row', justifyContent: 'space-around' },
@@ -306,6 +307,7 @@ const styles = StyleSheet.create({
   bodyContent: { paddingHorizontal: Spacing.screenH, paddingTop: 20, paddingBottom: 20 },
 
   locationRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 },
+  locationTextRow: { flexDirection: 'row', alignItems: 'center', gap: 6 },
   locationText: { color: Colors.slate, fontSize: 13, fontFamily: 'Inter' },
   radiusText: { color: Colors.brandTeal, fontSize: 13, fontWeight: '700', fontFamily: 'Inter' },
 
@@ -326,8 +328,9 @@ const styles = StyleSheet.create({
   jobTitle: { color: Colors.brandDark, fontSize: 15, fontWeight: '700', fontFamily: 'Inter', flex: 1 },
   jobBudget: { color: Colors.brandTeal, fontSize: 16, fontWeight: '800', fontFamily: 'Inter' },
   jobCategory: { color: Colors.muted, fontSize: 12, fontWeight: '600', fontFamily: 'Inter', marginBottom: 8 },
-  jobInfoRow: { marginBottom: 6, gap: 4 },
-  jobInfo: { color: Colors.slate, fontSize: 12, fontFamily: 'Inter' },
+  jobInfoRow: { marginBottom: 6, gap: 6 },
+  metaItem: { flexDirection: 'row', alignItems: 'center', gap: 6, flexShrink: 1 },
+  jobInfo: { color: Colors.slate, fontSize: 12, fontFamily: 'Inter', flexShrink: 1 },
   jobMetaRow: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 10 },
   jobPoster: { color: Colors.slate, fontSize: 12, fontFamily: 'Inter' },
   jobDistance: { color: Colors.slate, fontSize: 12, fontFamily: 'Inter' },

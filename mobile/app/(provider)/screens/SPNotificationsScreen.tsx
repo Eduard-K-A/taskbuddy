@@ -6,6 +6,7 @@
 
 import React, { useState } from 'react';
 import { ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { AlertTriangle, BriefcaseBusiness, CircleCheckBig, MessageCircle, Star } from 'lucide-react-native';
 import { Colors, Radii, Shadows, Sizes, Spacing } from '../../../src/constants/theme';
 
 const NOTIFICATIONS = [
@@ -53,24 +54,7 @@ export default function SPNotificationsScreen({ onBack }: SPNotificationsScreenP
           <View key={date}>
             <Text style={styles.dateLabel}>{date}</Text>
             {items.map((n) => (
-              <TouchableOpacity
-                key={n.id}
-                style={[styles.card, !n.read && styles.cardUnread]}
-                activeOpacity={0.85}
-                onPress={() => setNotifs((p) => p.map((x) => x.id === n.id ? { ...x, read: true } : x))}
-              >
-                <View style={[styles.iconWrap, { backgroundColor: n.iconBg }]}>
-                  <Text style={styles.iconText}>{n.icon}</Text>
-                </View>
-                <View style={styles.content}>
-                  <View style={styles.titleRow}>
-                    <Text style={styles.title}>{n.title}</Text>
-                    {!n.read && <View style={styles.dot} />}
-                  </View>
-                  <Text style={styles.message}>{n.message}</Text>
-                  <Text style={styles.time}>{n.time}</Text>
-                </View>
-              </TouchableOpacity>
+              <NotificationCard key={n.id} notification={n} onPress={() => setNotifs((p) => p.map((x) => x.id === n.id ? { ...x, read: true } : x))} />
             ))}
           </View>
         ))}
@@ -104,3 +88,23 @@ const styles = StyleSheet.create({
   message: { color: Colors.slate, fontSize: 13, fontFamily: 'Inter', lineHeight: 19, marginBottom: 6 },
   time: { color: Colors.muted, fontSize: 11, fontFamily: 'Inter' },
 });
+
+function NotificationCard({ notification: n, onPress }: { notification: typeof NOTIFICATIONS[number]; onPress: () => void }) {
+  const Icon = [BriefcaseBusiness, CircleCheckBig, Star, AlertTriangle, MessageCircle][Number(n.id) - 1];
+
+  return (
+    <TouchableOpacity style={[styles.card, !n.read && styles.cardUnread]} activeOpacity={0.85} onPress={onPress}>
+      <View style={[styles.iconWrap, { backgroundColor: n.iconBg }]}>
+        <Icon size={22} color={Colors.brandTeal} />
+      </View>
+      <View style={styles.content}>
+        <View style={styles.titleRow}>
+          <Text style={styles.title}>{n.title}</Text>
+          {!n.read && <View style={styles.dot} />}
+        </View>
+        <Text style={styles.message}>{n.message}</Text>
+        <Text style={styles.time}>{n.time}</Text>
+      </View>
+    </TouchableOpacity>
+  );
+}

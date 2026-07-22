@@ -9,6 +9,7 @@ import {
   KeyboardAvoidingView, Platform, ScrollView,
   StyleSheet, Text, TextInput, TouchableOpacity, View,
 } from 'react-native';
+import { Camera } from 'lucide-react-native';
 import { Colors, Radii, Shadows, Sizes, Spacing } from '../../../src/constants/theme';
 
 const SKILL_OPTIONS = ['General Cleaning', 'Deep Cleaning', 'Painting', 'Plumbing', 'Electrical', 'Landscaping', 'Moving', 'Carpentry'];
@@ -68,6 +69,10 @@ export default function SPEditProfileScreen({ onBack, onSave }: SPEditProfileScr
         <View style={styles.avatarSection}>
           <View style={styles.avatarCircle}><Text style={styles.avatarText}>JD</Text></View>
           <TouchableOpacity style={styles.photoBtn} activeOpacity={0.8}>
+            <View style={styles.photoBtnContent}>
+              <Camera size={15} color={Colors.white} />
+              <Text style={styles.photoBtnLabel}>Change Photo</Text>
+            </View>
             <Text style={styles.photoBtnText}>📷 Change Photo</Text>
           </TouchableOpacity>
         </View>
@@ -136,7 +141,9 @@ const styles = StyleSheet.create({
   avatarCircle: { width: 80, height: 80, borderRadius: 24, backgroundColor: Colors.brandCyan, alignItems: 'center', justifyContent: 'center', borderWidth: 3, borderColor: 'rgba(255,255,255,0.3)' },
   avatarText: { color: Colors.white, fontSize: 28, fontWeight: '800', fontFamily: 'Inter' },
   photoBtn: { backgroundColor: 'rgba(255,255,255,0.15)', borderRadius: 20, paddingHorizontal: 16, paddingVertical: 8 },
-  photoBtnText: { color: Colors.white, fontSize: 13, fontWeight: '600', fontFamily: 'Inter' },
+  photoBtnText: { display: 'none' },
+  photoBtnContent: { flexDirection: 'row', alignItems: 'center', gap: 6 },
+  photoBtnLabel: { color: Colors.white, fontSize: 13, fontWeight: '600', fontFamily: 'Inter' },
   body: { flex: 1 },
   bodyContent: { paddingHorizontal: Spacing.screenH, paddingTop: 20, paddingBottom: 20 },
   card: { backgroundColor: Colors.white, borderRadius: Radii.card, padding: 20, marginBottom: 16, ...Shadows.card },

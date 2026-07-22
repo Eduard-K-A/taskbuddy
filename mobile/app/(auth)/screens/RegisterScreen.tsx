@@ -222,10 +222,6 @@ function RegisterScreenContent({
         </ScrollView>
       </KeyboardAvoidingView>
 
-      {/* Gesture bar */}
-      <View style={styles.gestureWrap} pointerEvents="none">
-        <View style={styles.gestureBar} />
-      </View>
     </View>
   );
 }
@@ -393,9 +389,6 @@ const styles = StyleSheet.create({
   signInRow: { flexDirection: 'row', justifyContent: 'center', alignItems: 'center', marginTop: 4 },
   signInPrompt: { fontFamily: 'Inter', fontSize: 14, color: C.muted },
   signInLink: { fontFamily: 'Roboto', fontSize: 14, fontWeight: '700', color: C.brandTeal },
-
-  gestureWrap: { alignItems: 'center', paddingBottom: 8 },
-  gestureBar: { width: 108, height: 4, borderRadius: 12, backgroundColor: 'rgba(17,27,32,0.25)' },
 
   requiredAsterisk: { color: C.brandRed, fontWeight: '700' },
 });

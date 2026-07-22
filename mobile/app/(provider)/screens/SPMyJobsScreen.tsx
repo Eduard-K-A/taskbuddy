@@ -17,6 +17,7 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native';
+import { ArrowRight, CalendarDays, MapPin, MessageCircle } from 'lucide-react-native';
 import { Colors, Radii, Shadows, Sizes, Spacing } from '../../../src/constants/theme';
 import { SPScreen } from '../../../src/types/navigation';
 
@@ -121,8 +122,14 @@ export default function SPMyJobsScreen({ onNavigate }: SPMyJobsScreenProps) {
             </View>
             <Text style={styles.jobTitle}>{job.title}</Text>
             <View style={styles.jobDetails}>
-              <Text style={styles.jobDetail}>📍 {job.location}</Text>
-              <Text style={styles.jobDetail}>📅 {job.date} · {job.time}</Text>
+              <View style={styles.jobDetailRow}>
+                <MapPin size={14} color={Colors.brandTeal} />
+                <Text style={styles.jobDetail}>{job.location}</Text>
+              </View>
+              <View style={styles.jobDetailRow}>
+                <CalendarDays size={14} color={Colors.brandTeal} />
+                <Text style={styles.jobDetail}>{job.date} · {job.time}</Text>
+              </View>
             </View>
             <View style={styles.jobFooter}>
               <Text style={styles.jobAmount}>{job.amount}</Text>
@@ -132,14 +139,17 @@ export default function SPMyJobsScreen({ onNavigate }: SPMyJobsScreenProps) {
                   onPress={() => onNavigate('Chat')}
                   activeOpacity={0.8}
                 >
-                  <Text style={styles.chatBtnText}>💬</Text>
+                  <MessageCircle size={18} color={Colors.brandTeal} />
                 </TouchableOpacity>
                 <TouchableOpacity
                   style={styles.viewBtn}
                   onPress={() => onNavigate('Job Detail')}
                   activeOpacity={0.8}
                 >
-                  <Text style={styles.viewBtnText}>View Job →</Text>
+                  <View style={styles.viewBtnContent}>
+                    <Text style={styles.viewBtnText}>View Job</Text>
+                    <ArrowRight size={14} color={Colors.white} />
+                  </View>
                 </TouchableOpacity>
               </View>
             </View>
@@ -182,12 +192,13 @@ const styles = StyleSheet.create({
   statusPillText: { fontSize: 11, fontWeight: '600', fontFamily: 'Inter' },
   jobTitle: { color: Colors.brandDark, fontSize: 16, fontWeight: '800', fontFamily: 'Inter', marginBottom: 8 },
   jobDetails: { gap: 4, marginBottom: 12 },
+  jobDetailRow: { flexDirection: 'row', alignItems: 'center', gap: 6 },
   jobDetail: { color: Colors.slate, fontSize: 12, fontFamily: 'Inter' },
   jobFooter: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
   jobAmount: { color: Colors.brandTeal, fontSize: 20, fontWeight: '800', fontFamily: 'Inter' },
   jobActions: { flexDirection: 'row', gap: 8, alignItems: 'center' },
   chatBtn: { width: 36, height: 36, borderRadius: 10, backgroundColor: Colors.backgroundAlt, alignItems: 'center', justifyContent: 'center' },
-  chatBtnText: { fontSize: 18 },
   viewBtn: { backgroundColor: Colors.brandTeal, borderRadius: 12, paddingHorizontal: 14, paddingVertical: 8 },
+  viewBtnContent: { flexDirection: 'row', alignItems: 'center', gap: 5 },
   viewBtnText: { color: Colors.white, fontSize: 12, fontWeight: '700', fontFamily: 'Inter' },
 });

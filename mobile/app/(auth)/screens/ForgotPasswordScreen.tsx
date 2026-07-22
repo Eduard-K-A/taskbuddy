@@ -136,9 +136,6 @@ export default function ForgotPasswordScreen({
         </ScrollView>
       </KeyboardAvoidingView>
 
-      <View style={styles.gestureBarWrap} pointerEvents="none">
-        <View style={styles.gestureBar} />
-      </View>
     </View>
   );
 }

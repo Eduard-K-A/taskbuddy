@@ -35,12 +35,12 @@ import { Colors, Radii, Shadows, Sizes, Spacing } from '../../../src/constants/t
 import { HOScreen } from '../../../src/types/navigation';
 
 const SERVICES = [
-  { label: 'General\nCleaning', icon: BrushCleaning, color: '#E8F5E9' },
-  { label: 'Painting', icon: Palette, color: '#FFF3E0' },
-  { label: 'Deep\nCleaning', icon: Sparkles, color: '#E3F2FD' },
-  { label: 'Moving', icon: Package, color: '#F3E5F5' },
-  { label: 'Plumbing', icon: Wrench, color: '#E8EAF6' },
-  { label: 'Electrical', icon: Zap, color: '#FFF8E1' },
+  { label: 'General\nCleaning', icon: BrushCleaning },
+  { label: 'Painting', icon: Palette },
+  { label: 'Deep\nCleaning', icon: Sparkles },
+  { label: 'Moving', icon: Package },
+  { label: 'Plumbing', icon: Wrench },
+  { label: 'Electrical', icon: Zap },
 ];
 
 const JOBS = [
@@ -163,7 +163,7 @@ export default function HOHomeScreen({ onNavigate }: HOHomeScreenProps) {
           {SERVICES.map((svc) => (
             <TouchableOpacity
               key={svc.label}
-              style={[styles.serviceCard, { backgroundColor: svc.color }]}
+              style={styles.serviceCard}
               onPress={() => onNavigate('Create Job')}
               activeOpacity={0.85}
             >
@@ -234,7 +234,7 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.brandDark,
     paddingTop: Sizes.statusBarHeight,
     paddingHorizontal: Spacing.screenH,
-    paddingBottom: 0,
+    paddingBottom: 20,
     borderBottomLeftRadius: 28,
     borderBottomRightRadius: 28,
   },
@@ -271,7 +271,7 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.white,
     borderRadius: Radii.card,
     padding: 20,
-    marginBottom: -20,
+    marginBottom: 0,
     ...Shadows.card,
   },
   walletRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14 },
@@ -303,7 +303,7 @@ const styles = StyleSheet.create({
 
   // Body
   body: { flex: 1 },
-  bodyContent: { paddingHorizontal: Spacing.screenH, paddingTop: 32, paddingBottom: 20 },
+  bodyContent: { paddingHorizontal: Spacing.screenH, paddingTop: 24, paddingBottom: 20 },
 
   sectionTitle: { color: Colors.brandDark, fontSize: 18, fontWeight: '800', fontFamily: 'Inter', marginBottom: 14 },
   sectionHeaderRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14, marginTop: 24 },
@@ -314,8 +314,8 @@ const styles = StyleSheet.create({
   serviceCard: {
     width: 100, height: 100, borderRadius: 20,
     marginRight: 12, padding: 14,
+    backgroundColor: '#E8F5F9',
     justifyContent: 'space-between', alignItems: 'flex-start',
-    ...Shadows.card,
   },
   serviceLabel: { fontSize: 12, fontWeight: '700', color: Colors.brandDark, fontFamily: 'Inter', lineHeight: 16 },
 
