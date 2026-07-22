@@ -23,8 +23,8 @@ import RegisterScreen from './app/(auth)/screens/RegisterScreen';
 
 // ── Homeowner screens ─────────────────────────────────────────────────────────
 import HOHomeScreen from './app/(homeowner)/screens/HOHomeScreen';
-import MyJobs from './app/(homeowner)/screens/MyJobs';
-import Profile from './app/(homeowner)/screens/Profile';
+import MyJobs from './app/(homeowner)/screens/HOMyJobs';
+import Profile from './app/(homeowner)/screens/HOProfile';
 import HOWalletScreen from './app/(homeowner)/screens/HOWalletScreen';
 import HOCreateJobScreen from './app/(homeowner)/screens/HOCreateJobScreen';
 import HOJobDetailScreen from './app/(homeowner)/screens/HOJobDetailScreen';

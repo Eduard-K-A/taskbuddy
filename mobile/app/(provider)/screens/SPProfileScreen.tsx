@@ -11,6 +11,7 @@
 
 import React from 'react';
 import { ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { BadgeCheck, CreditCard, Edit3, LogOut, Mail, MapPin, Phone, Bell, CalendarDays, Wallet as WalletIcon, ChevronRight } from 'lucide-react-native';
 import { Colors, Radii, Shadows, Sizes, Spacing } from '../../../src/constants/theme';
 import { SPScreen } from '../../../src/types/navigation';
 
@@ -28,14 +29,17 @@ export default function SPProfileScreen({ onNavigate, onLogout }: SPProfileScree
         <View style={styles.heroTopRow}>
           <Text style={styles.heroTitle}>My Profile</Text>
           <TouchableOpacity style={styles.editBtn} onPress={() => onNavigate('Edit Profile')} activeOpacity={0.8}>
-            <Text style={styles.editBtnText}>✏️ Edit</Text>
+            <View style={styles.editBtnContent}>
+              <Edit3 size={14} color={Colors.white} />
+              <Text style={styles.editBtnText}>Edit</Text>
+            </View>
           </TouchableOpacity>
         </View>
 
         <View style={styles.avatarSection}>
           <View style={styles.avatarWrap}>
             <View style={styles.avatarCircle}><Text style={styles.avatarText}>JD</Text></View>
-            <View style={styles.verifiedBadge}><Text style={styles.verifiedText}>✓</Text></View>
+            <View style={styles.verifiedBadge}><BadgeCheck size={12} color={Colors.white} /></View>
           </View>
           <View>
             <Text style={styles.providerName}>Juan dela Cruz</Text>
@@ -87,21 +91,29 @@ export default function SPProfileScreen({ onNavigate, onLogout }: SPProfileScree
         {/* Menu */}
         <View style={styles.card}>
           {[
-            { label: 'Edit Profile', icon: '✏️', screen: 'Edit Profile' as SPScreen },
-            { label: 'Wallet', icon: '💳', screen: 'Wallet' as SPScreen },
-            { label: 'Notifications', icon: '🔔', screen: 'Notifications' as SPScreen },
-            { label: 'Calendar', icon: '📅', screen: 'Calendar' as SPScreen },
-          ].map((item, i, arr) => (
-            <TouchableOpacity key={item.label} style={[styles.menuItem, i < arr.length - 1 && styles.menuItemBorder]} onPress={() => onNavigate(item.screen)} activeOpacity={0.8}>
-              <Text style={styles.menuIcon}>{item.icon}</Text>
-              <Text style={styles.menuLabel}>{item.label}</Text>
-              <Text style={styles.menuArrow}>›</Text>
-            </TouchableOpacity>
-          ))}
+            { label: 'Edit Profile', icon: Edit3, screen: 'Edit Profile' as SPScreen },
+            { label: 'Wallet', icon: WalletIcon, screen: 'Wallet' as SPScreen },
+            { label: 'Notifications', icon: Bell, screen: 'Notifications' as SPScreen },
+            { label: 'Calendar', icon: CalendarDays, screen: 'Calendar' as SPScreen },
+          ].map((item, i, arr) => {
+            const Icon = item.icon;
+            return (
+              <TouchableOpacity key={item.label} style={[styles.menuItem, i < arr.length - 1 && styles.menuItemBorder]} onPress={() => onNavigate(item.screen)} activeOpacity={0.8}>
+                <View style={styles.menuIconBox}>
+                  <Icon size={18} color={Colors.brandTeal} />
+                </View>
+                <Text style={styles.menuLabel}>{item.label}</Text>
+                <ChevronRight size={18} color={Colors.muted} />
+              </TouchableOpacity>
+            );
+          })}
         </View>
 
         <TouchableOpacity style={styles.logoutBtn} onPress={onLogout} activeOpacity={0.85}>
-          <Text style={styles.logoutText}>🚪 Log Out</Text>
+          <View style={styles.logoutContent}>
+            <LogOut size={16} color={Colors.error} />
+            <Text style={styles.logoutText}>Log Out</Text>
+          </View>
         </TouchableOpacity>
 
         <View style={{ height: 20 }} />

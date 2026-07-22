@@ -18,6 +18,18 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native';
+import {
+  Bell,
+  BriefcaseBusiness,
+  CheckCircle2,
+  MapPin,
+  Star,
+  Clock3,
+  UserRound,
+  CircleAlert,
+  Wallet,
+  RefreshCw,
+} from 'lucide-react-native';
 import { Colors, Radii, Shadows, Sizes, Spacing } from '../../../src/constants/theme';
 import { SPScreen } from '../../../src/types/navigation';
 
@@ -80,7 +92,7 @@ export default function SPHomeScreen({ onNavigate }: SPHomeScreenProps) {
               onPress={() => onNavigate('Notifications')}
               activeOpacity={0.8}
             >
-              <Text style={styles.notifIcon}>🔔</Text>
+              <Bell size={18} color={Colors.white} />
             </TouchableOpacity>
             <TouchableOpacity
               style={styles.avatarCircle}
@@ -104,23 +116,29 @@ export default function SPHomeScreen({ onNavigate }: SPHomeScreenProps) {
               onPress={() => onNavigate('Wallet')}
               activeOpacity={0.8}
             >
-              <Text style={styles.walletBtnText}>💳 Wallet</Text>
+              <View style={styles.walletBtnContent}>
+                <Wallet size={14} color={Colors.white} />
+                <Text style={styles.walletBtnText}>Wallet</Text>
+              </View>
             </TouchableOpacity>
           </View>
 
           {/* Stats */}
           <View style={styles.statsRow}>
             {[
-              { label: 'Jobs Done', value: '47', icon: '✅' },
-              { label: 'Rating', value: '4.8', icon: '⭐' },
-              { label: 'Active', value: '2', icon: '🔄' },
-            ].map((s) => (
-              <View key={s.label} style={styles.statItem}>
-                <Text style={styles.statIcon}>{s.icon}</Text>
-                <Text style={styles.statValue}>{s.value}</Text>
-                <Text style={styles.statLabel}>{s.label}</Text>
-              </View>
-            ))}
+              { label: 'Jobs Done', value: '47', icon: CheckCircle2 },
+              { label: 'Rating', value: '4.8', icon: Star },
+              { label: 'Active', value: '2', icon: RefreshCw },
+            ].map((s) => {
+              const Icon = s.icon;
+              return (
+                <View key={s.label} style={styles.statItem}>
+                  <Icon size={18} color={Colors.white} />
+                  <Text style={styles.statValue}>{s.value}</Text>
+                  <Text style={styles.statLabel}>{s.label}</Text>
+                </View>
+              );
+            })}
           </View>
         </View>
 
@@ -142,7 +160,10 @@ export default function SPHomeScreen({ onNavigate }: SPHomeScreenProps) {
       >
         {/* Search radius */}
         <View style={styles.locationRow}>
-          <Text style={styles.locationText}>📍 Lipa City, Batangas</Text>
+          <View style={styles.locationTextRow}>
+            <MapPin size={14} color={Colors.brandTeal} />
+            <Text style={styles.locationText}>Lipa City, Batangas</Text>
+          </View>
           <TouchableOpacity activeOpacity={0.8}>
             <Text style={styles.radiusText}>5 km radius ›</Text>
           </TouchableOpacity>
@@ -165,7 +186,8 @@ export default function SPHomeScreen({ onNavigate }: SPHomeScreenProps) {
           >
             {job.isUrgent && (
               <View style={styles.urgentBanner}>
-                <Text style={styles.urgentBannerText}>🚨 URGENT JOB</Text>
+                <CircleAlert size={14} color={Colors.error} />
+                <Text style={styles.urgentBannerText}>URGENT JOB</Text>
               </View>
             )}
             <View style={styles.jobCardHeader}>
@@ -174,12 +196,24 @@ export default function SPHomeScreen({ onNavigate }: SPHomeScreenProps) {
             </View>
             <Text style={styles.jobCategory}>{job.category}</Text>
             <View style={styles.jobInfoRow}>
-              <Text style={styles.jobInfo}>📍 {job.location}</Text>
-              <Text style={styles.jobInfo}>🕐 {job.time}</Text>
+              <View style={styles.metaItem}>
+                <MapPin size={14} color={Colors.brandTeal} />
+                <Text style={styles.jobInfo}>{job.location}</Text>
+              </View>
+              <View style={styles.metaItem}>
+                <Clock3 size={14} color={Colors.brandTeal} />
+                <Text style={styles.jobInfo}>{job.time}</Text>
+              </View>
             </View>
             <View style={styles.jobMetaRow}>
-              <Text style={styles.jobPoster}>👤 {job.postedBy}</Text>
-              <Text style={styles.jobDistance}>📌 {job.distance}</Text>
+              <View style={styles.metaItem}>
+                <UserRound size={14} color={Colors.brandTeal} />
+                <Text style={styles.jobPoster}>{job.postedBy}</Text>
+              </View>
+              <View style={styles.metaItem}>
+                <BriefcaseBusiness size={14} color={Colors.brandTeal} />
+                <Text style={styles.jobDistance}>{job.distance}</Text>
+              </View>
             </View>
             <View style={styles.tagsRow}>
               {job.tags.map((tag) => (

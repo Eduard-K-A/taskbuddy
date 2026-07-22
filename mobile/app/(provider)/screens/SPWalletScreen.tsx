@@ -6,14 +6,15 @@
 
 import React from 'react';
 import { ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { ArrowLeft, ArrowDownToLine, ArrowRightLeft, BarChart3, Building2, CreditCard as CardIcon, Sparkles, TreePine, Smartphone } from 'lucide-react-native';
 import { Colors, Radii, Shadows, Sizes, Spacing } from '../../../src/constants/theme';
 
 const TRANSACTIONS = [
-  { id: '1', title: 'Kitchen Cleaning', type: 'credit', amount: '+₱750', date: 'May 13, 2026', status: 'Credited', icon: '🧹' },
-  { id: '2', title: 'Withdrawal to GCash', type: 'debit', amount: '₱1,000', date: 'May 12, 2026', status: 'Processed', icon: '📲' },
-  { id: '3', title: 'Garden Maintenance', type: 'credit', amount: '+₱500', date: 'May 10, 2026', status: 'Credited', icon: '🌿' },
-  { id: '4', title: 'Deep Cleaning', type: 'credit', amount: '+₱1,200', date: 'May 5, 2026', status: 'Credited', icon: '🫧' },
-  { id: '5', title: 'Platform Fee', type: 'debit', amount: '₱60', date: 'May 5, 2026', status: 'Deducted', icon: '🏢' },
+  { id: '1', title: 'Kitchen Cleaning', type: 'credit', amount: '+₱750', date: 'May 13, 2026', status: 'Credited', icon: Sparkles },
+  { id: '2', title: 'Withdrawal to GCash', type: 'debit', amount: '₱1,000', date: 'May 12, 2026', status: 'Processed', icon: Smartphone },
+  { id: '3', title: 'Garden Maintenance', type: 'credit', amount: '+₱500', date: 'May 10, 2026', status: 'Credited', icon: TreePine },
+  { id: '4', title: 'Deep Cleaning', type: 'credit', amount: '+₱1,200', date: 'May 5, 2026', status: 'Credited', icon: Sparkles },
+  { id: '5', title: 'Platform Fee', type: 'debit', amount: '₱60', date: 'May 5, 2026', status: 'Deducted', icon: Building2 },
 ];
 
 interface SPWalletScreenProps {
@@ -27,7 +28,7 @@ export default function SPWalletScreen({ onBack }: SPWalletScreenProps) {
         <View style={styles.heroTopRow}>
           {onBack && (
             <TouchableOpacity style={styles.backBtn} onPress={onBack} activeOpacity={0.8}>
-              <Text style={styles.backIcon}>←</Text>
+              <ArrowLeft size={20} color={Colors.white} />
             </TouchableOpacity>
           )}
           <Text style={styles.heroTitle}>Wallet</Text>
@@ -38,17 +39,17 @@ export default function SPWalletScreen({ onBack }: SPWalletScreenProps) {
           <Text style={styles.balanceAmount}>₱12,450.00</Text>
           <View style={styles.actions}>
             <TouchableOpacity style={styles.actionBtn} activeOpacity={0.8}>
-              <Text style={styles.actionIcon}>⬇️</Text>
+              <ArrowDownToLine size={18} color={Colors.white} />
               <Text style={styles.actionText}>Withdraw</Text>
             </TouchableOpacity>
             <View style={styles.divider} />
             <TouchableOpacity style={styles.actionBtn} activeOpacity={0.8}>
-              <Text style={styles.actionIcon}>🔄</Text>
+              <ArrowRightLeft size={18} color={Colors.white} />
               <Text style={styles.actionText}>Transfer</Text>
             </TouchableOpacity>
             <View style={styles.divider} />
             <TouchableOpacity style={styles.actionBtn} activeOpacity={0.8}>
-              <Text style={styles.actionIcon}>📊</Text>
+              <BarChart3 size={18} color={Colors.white} />
               <Text style={styles.actionText}>Statement</Text>
             </TouchableOpacity>
           </View>
@@ -69,18 +70,21 @@ export default function SPWalletScreen({ onBack }: SPWalletScreenProps) {
 
       <ScrollView style={styles.body} contentContainerStyle={styles.bodyContent} showsVerticalScrollIndicator={false}>
         <Text style={styles.sectionTitle}>Transaction History</Text>
-        {TRANSACTIONS.map((txn) => (
-          <View key={txn.id} style={styles.txnCard}>
-            <View style={styles.txnIcon}><Text style={styles.txnIconText}>{txn.icon}</Text></View>
-            <View style={styles.txnInfo}>
-              <Text style={styles.txnTitle}>{txn.title}</Text>
-              <Text style={styles.txnDate}>{txn.date} · {txn.status}</Text>
+        {TRANSACTIONS.map((txn) => {
+          const Icon = txn.icon;
+          return (
+            <View key={txn.id} style={styles.txnCard}>
+              <View style={styles.txnIcon}><Icon size={18} color={Colors.brandTeal} /></View>
+              <View style={styles.txnInfo}>
+                <Text style={styles.txnTitle}>{txn.title}</Text>
+                <Text style={styles.txnDate}>{txn.date} · {txn.status}</Text>
+              </View>
+              <Text style={[styles.txnAmount, txn.type === 'credit' ? styles.txnCredit : styles.txnDebit]}>
+                {txn.type === 'debit' ? '-' : ''}{txn.amount}
+              </Text>
             </View>
-            <Text style={[styles.txnAmount, txn.type === 'credit' ? styles.txnCredit : styles.txnDebit]}>
-              {txn.type === 'debit' ? '-' : ''}{txn.amount}
-            </Text>
-          </View>
-        ))}
+          );
+        })}
         <View style={{ height: 20 }} />
       </ScrollView>
     </View>

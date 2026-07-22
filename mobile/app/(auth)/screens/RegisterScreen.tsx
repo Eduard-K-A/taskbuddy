@@ -26,7 +26,9 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native';
+import { ArrowLeft, Check } from 'lucide-react-native';
 import { Colors } from '../../../src/constants/theme';
+import TermsAndConditions from './TermsAndConditions';
 
 const C = {
   ...Colors,
@@ -39,6 +41,12 @@ const C = {
 interface RegisterScreenProps {
   onSignUp: () => void;
   onLogin: () => void;
+}
+
+interface RegisterScreenContentProps extends RegisterScreenProps {
+  onViewTerms: () => void;
+  termsAccepted: boolean;
+  onToggleTermsAccepted: () => void;
 }
 
 interface InputProps {
@@ -74,7 +82,13 @@ function FormInput({ label, placeholder, value, onChangeText, secureTextEntry, k
   );
 }
 
-export default function RegisterScreen({ onSignUp, onLogin }: RegisterScreenProps) {
+function RegisterScreenContent({
+  onSignUp,
+  onLogin,
+  onViewTerms,
+  termsAccepted,
+  onToggleTermsAccepted,
+}: RegisterScreenContentProps) {
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -99,7 +113,7 @@ export default function RegisterScreen({ onSignUp, onLogin }: RegisterScreenProp
           {/* Top section with back + logo placeholder */}
           <View style={styles.topSection}>
             <TouchableOpacity style={styles.backBtn} onPress={onLogin} activeOpacity={0.8}>
-              <Text style={styles.backIcon}>←</Text>
+              <ArrowLeft size={20} color={C.white} />
             </TouchableOpacity>
           </View>
 
@@ -152,6 +166,24 @@ export default function RegisterScreen({ onSignUp, onLogin }: RegisterScreenProp
               secureTextEntry
             />
 
+            <View style={styles.termsRow}>
+              <TouchableOpacity
+                style={[styles.checkbox, termsAccepted && styles.checkboxChecked, !termsAccepted && styles.checkboxDisabled]}
+                onPress={onToggleTermsAccepted}
+                activeOpacity={0.8}
+                disabled={!termsAccepted}
+              >
+                {termsAccepted ? <Check size={14} color={C.white} /> : null}
+              </TouchableOpacity>
+              <Text style={styles.termsText}>
+                I have read and agree with the{' '}
+                <Text style={styles.termsLink} onPress={onViewTerms}>
+                  Terms and Conditions
+                </Text>
+                .<Text style={styles.requiredAsterisk}>*</Text>
+              </Text>
+            </View>
+
             {/* Sign Up */}
             <TouchableOpacity style={styles.primaryBtn} onPress={onSignUp} activeOpacity={0.85}>
               <Text style={styles.primaryBtnText}>Sign Up</Text>
@@ -195,6 +227,30 @@ export default function RegisterScreen({ onSignUp, onLogin }: RegisterScreenProp
         <View style={styles.gestureBar} />
       </View>
     </View>
+  );
+}
+
+export default function RegisterScreen({ onSignUp, onLogin }: RegisterScreenProps) {
+  const [showTerms, setShowTerms] = useState(false);
+  const [termsAccepted, setTermsAccepted] = useState(false);
+
+  if (showTerms) {
+    return (
+      <TermsAndConditions
+        onBack={() => setShowTerms(false)}
+        onAccept={() => setTermsAccepted(true)}
+      />
+    );
+  }
+
+  return (
+    <RegisterScreenContent
+      onSignUp={onSignUp}
+      onLogin={onLogin}
+      onViewTerms={() => setShowTerms(true)}
+      termsAccepted={termsAccepted}
+      onToggleTermsAccepted={() => setTermsAccepted((value) => !value)}
+    />
   );
 }
 
@@ -250,6 +306,54 @@ const styles = StyleSheet.create({
 
   inputGroup: { marginBottom: 16 },
   inputLabel: { fontFamily: 'Inter', fontSize: 13, fontWeight: '600', color: C.brandDark, marginBottom: 6 },
+  termsRow: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    marginBottom: 6,
+    marginTop: 4,
+    gap: 10,
+  },
+  checkbox: {
+    width: 22,
+    height: 22,
+    borderRadius: 6,
+    borderWidth: 1,
+    borderColor: C.mutedBorder,
+    backgroundColor: C.white,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginTop: 2,
+  },
+  checkboxChecked: {
+    backgroundColor: C.brandTeal,
+    borderColor: C.brandTeal,
+  },
+  checkboxDisabled: {
+    opacity: 0.65,
+  },
+  checkboxMark: {
+    color: C.white,
+    fontSize: 13,
+    fontWeight: '700',
+  },
+  termsText: {
+    flex: 1,
+    color: C.slate,
+    fontSize: 13,
+    fontFamily: 'Inter',
+    lineHeight: 20,
+  },
+  termsLink: {
+    color: C.brandTeal,
+    fontWeight: '700',
+  },
+  requiredHint: {
+    color: C.muted,
+    fontSize: 12,
+    fontFamily: 'Inter',
+    marginBottom: 16,
+    marginLeft: 32,
+  },
   inputBox: {
     backgroundColor: '#F8FAFC', borderRadius: 12, paddingHorizontal: 16, paddingVertical: 13,
     borderWidth: 1, borderColor: C.mutedBorder,
@@ -292,4 +396,6 @@ const styles = StyleSheet.create({
 
   gestureWrap: { alignItems: 'center', paddingBottom: 8 },
   gestureBar: { width: 108, height: 4, borderRadius: 12, backgroundColor: 'rgba(17,27,32,0.25)' },
+
+  requiredAsterisk: { color: C.brandRed, fontWeight: '700' },
 });

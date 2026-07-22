@@ -9,6 +9,7 @@ import {
   FlatList, KeyboardAvoidingView, Platform,
   StyleSheet, Text, TextInput, TouchableOpacity, View,
 } from 'react-native';
+import { ArrowLeft, Paperclip, Phone, Sparkles, SendHorizontal } from 'lucide-react-native';
 import { Colors, Radii, Sizes, Spacing } from '../../../src/constants/theme';
 
 interface Message { id: string; text: string; sent: boolean; time: string; }
@@ -52,7 +53,7 @@ export default function SPChatScreen({ onBack }: SPChatScreenProps) {
     <View style={styles.screen}>
       <View style={styles.header}>
         <TouchableOpacity style={styles.backBtn} onPress={onBack} activeOpacity={0.8}>
-          <Text style={styles.backIcon}>←</Text>
+          <ArrowLeft size={18} color={Colors.white} />
         </TouchableOpacity>
         <View style={styles.clientAvatar}><Text style={styles.clientAvatarText}>AC</Text></View>
         <View style={styles.clientInfo}>
@@ -63,13 +64,13 @@ export default function SPChatScreen({ onBack }: SPChatScreenProps) {
           </View>
         </View>
         <TouchableOpacity style={styles.callBtn} activeOpacity={0.8}>
-          <Text style={styles.callIcon}>📞</Text>
+          <Phone size={18} color={Colors.white} />
         </TouchableOpacity>
       </View>
 
       {/* Job ref */}
       <View style={styles.jobRef}>
-        <Text style={styles.jobRefIcon}>🧹</Text>
+        <Sparkles size={18} color={Colors.brandTeal} />
         <Text style={styles.jobRefText}>Kitchen Deep Clean · May 20, 2026</Text>
         <TouchableOpacity activeOpacity={0.8}><Text style={styles.jobRefLink}>View Job</Text></TouchableOpacity>
       </View>
@@ -86,7 +87,7 @@ export default function SPChatScreen({ onBack }: SPChatScreenProps) {
         />
         <View style={styles.inputBar}>
           <TouchableOpacity style={styles.attachBtn} activeOpacity={0.8}>
-            <Text style={styles.attachIcon}>📎</Text>
+            <Paperclip size={18} color={Colors.brandTeal} />
           </TouchableOpacity>
           <TextInput
             style={styles.chatInput}
@@ -103,7 +104,7 @@ export default function SPChatScreen({ onBack }: SPChatScreenProps) {
             activeOpacity={0.85}
             disabled={!text.trim()}
           >
-            <Text style={styles.sendBtnText}>➤</Text>
+            <SendHorizontal size={16} color={Colors.white} />
           </TouchableOpacity>
         </View>
       </KeyboardAvoidingView>

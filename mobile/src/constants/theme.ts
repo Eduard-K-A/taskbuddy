@@ -14,6 +14,7 @@ export const Colors = {
   brandTeal: '#096E8B',
   brandCyan: '#0AA2CB',
   brandCyanLight: '#99DEF1',
+  brandRed: '#E03434',
 
   // Neutrals
   white: '#FFFFFF',

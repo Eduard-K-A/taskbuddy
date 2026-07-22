@@ -32,6 +32,7 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native';
+import { Eye, EyeOff } from 'lucide-react-native';
 import { Colors } from '../../../src/constants/theme';
 
 const C = Colors;
@@ -212,7 +213,7 @@ export default function LoginScreen({
                 style={styles.eyeBtn}
                 hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
               >
-                <Text style={styles.eyeIcon}>{showPassword ? '🙈' : '👁'}</Text>
+                {showPassword ? <EyeOff size={18} color={C.muted} /> : <Eye size={18} color={C.muted} />}
               </TouchableOpacity>
             </View>
           </View>
