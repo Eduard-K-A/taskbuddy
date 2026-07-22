@@ -10,6 +10,7 @@ import {
   StyleSheet, Text, TextInput, TouchableOpacity, View,
 } from 'react-native';
 import { Camera } from 'lucide-react-native';
+import ConfirmationModal from '../../../src/components/ConfirmationModal';
 import { Colors, Radii, Shadows, Sizes, Spacing } from '../../../src/constants/theme';
 
 const SKILL_OPTIONS = ['General Cleaning', 'Deep Cleaning', 'Painting', 'Plumbing', 'Electrical', 'Landscaping', 'Moving', 'Carpentry'];
@@ -47,6 +48,11 @@ export default function SPEditProfileScreen({ onBack, onSave }: SPEditProfileScr
   const [location, setLocation] = useState('Lipa City, Batangas');
   const [bio, setBio] = useState('Professional cleaner with 3+ years experience.');
   const [selectedSkills, setSelectedSkills] = useState(['General Cleaning', 'Deep Cleaning']);
+  const [showSaveConfirmation, setShowSaveConfirmation] = useState(false);
+  const hasChanges = name !== 'Juan dela Cruz' || email !== 'juan.delacruz@gmail.com' || phone !== '+639123456789'
+    || location !== 'Lipa City, Batangas' || bio !== 'Professional cleaner with 3+ years experience.'
+    || selectedSkills.join('|') !== 'General Cleaning|Deep Cleaning';
+  const requestSave = () => hasChanges ? setShowSaveConfirmation(true) : onSave();
 
   const toggleSkill = (skill: string) => {
     setSelectedSkills((prev) =>
@@ -62,7 +68,7 @@ export default function SPEditProfileScreen({ onBack, onSave }: SPEditProfileScr
             <Text style={styles.backIcon}>←</Text>
           </TouchableOpacity>
           <Text style={styles.headerTitle}>Edit Profile</Text>
-          <TouchableOpacity onPress={onSave} activeOpacity={0.8}>
+          <TouchableOpacity onPress={requestSave} activeOpacity={0.8}>
             <Text style={styles.saveTextBtn}>Save</Text>
           </TouchableOpacity>
         </View>
@@ -117,13 +123,21 @@ export default function SPEditProfileScreen({ onBack, onSave }: SPEditProfileScr
             </View>
           </View>
 
-          <TouchableOpacity style={styles.saveBtn} onPress={onSave} activeOpacity={0.85}>
+          <TouchableOpacity style={styles.saveBtn} onPress={requestSave} activeOpacity={0.85}>
             <Text style={styles.saveBtnText}>Save Changes</Text>
           </TouchableOpacity>
 
           <View style={{ height: 20 }} />
         </ScrollView>
       </KeyboardAvoidingView>
+      <ConfirmationModal
+        visible={showSaveConfirmation}
+        title="Save profile changes?"
+        message="Your updated professional details and services will be saved to your profile."
+        confirmLabel="Save Changes"
+        onCancel={() => setShowSaveConfirmation(false)}
+        onConfirm={() => { setShowSaveConfirmation(false); onSave(); }}
+      />
     </View>
   );
 }

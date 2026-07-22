@@ -34,6 +34,7 @@ import HOChatScreen from './app/(homeowner)/screens/HOChatScreen';
 import HONotificationsScreen from './app/(homeowner)/screens/HONotificationsScreen';
 import HOEditProfileScreen from './app/(homeowner)/screens/HOEditProfileScreen';
 import HOSettingsScreen from './app/(homeowner)/screens/HOSettingsScreen';
+import HODisputeFilingScreen from './app/(homeowner)/screens/HODisputeFilingScreen';
 
 // ── Provider screens ──────────────────────────────────────────────────────────
 import SPHomeScreen from './app/(provider)/screens/SPHomeScreen';
@@ -258,7 +259,14 @@ function AppContent() {
     if (hoScreen === 'Chat') {
       return (
         <View style={styles.screen}>
-          <HOChatScreen onBack={hoBack} />
+          <HOChatScreen onBack={hoBack} onViewJob={() => hoNavigate('Job Detail')} />
+        </View>
+      );
+    }
+    if (hoScreen === 'Dispute Filing') {
+      return (
+        <View style={styles.screen}>
+          <HODisputeFilingScreen onBack={hoBack} onSubmitted={hoBack} />
         </View>
       );
     }
@@ -340,7 +348,7 @@ function AppContent() {
   if (spScreen === 'Chat') {
     return (
       <View style={styles.screen}>
-        <SPChatScreen onBack={spBack} />
+        <SPChatScreen onBack={spBack} onViewJob={() => spNavigate('Job Detail')} />
       </View>
     );
   }

@@ -22,9 +22,9 @@ const INITIAL_MESSAGES: Message[] = [
   { id: '5', text: 'Perfect. See you tomorrow!', sent: false, time: '9:34 AM' },
 ];
 
-interface SPChatScreenProps { onBack: () => void; }
+interface SPChatScreenProps { onBack: () => void; onViewJob: () => void; }
 
-export default function SPChatScreen({ onBack }: SPChatScreenProps) {
+export default function SPChatScreen({ onBack, onViewJob }: SPChatScreenProps) {
   const [messages, setMessages] = useState<Message[]>(INITIAL_MESSAGES);
   const [text, setText] = useState('');
   const listRef = useRef<FlatList>(null);
@@ -72,7 +72,7 @@ export default function SPChatScreen({ onBack }: SPChatScreenProps) {
       <View style={styles.jobRef}>
         <Sparkles size={18} color={Colors.brandTeal} />
         <Text style={styles.jobRefText}>Kitchen Deep Clean · May 20, 2026</Text>
-        <TouchableOpacity activeOpacity={0.8}><Text style={styles.jobRefLink}>View Job</Text></TouchableOpacity>
+        <TouchableOpacity onPress={onViewJob} activeOpacity={0.8}><Text style={styles.jobRefLink}>View Job</Text></TouchableOpacity>
       </View>
 
       <KeyboardAvoidingView style={styles.flex} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>

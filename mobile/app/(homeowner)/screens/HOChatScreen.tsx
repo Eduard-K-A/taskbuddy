@@ -47,9 +47,10 @@ const INITIAL_MESSAGES: Message[] = [
 
 interface HOChatScreenProps {
   onBack: () => void;
+  onViewJob: () => void;
 }
 
-export default function HOChatScreen({ onBack }: HOChatScreenProps) {
+export default function HOChatScreen({ onBack, onViewJob }: HOChatScreenProps) {
   const [messages, setMessages] = useState<Message[]>(INITIAL_MESSAGES);
   const [text, setText] = useState('');
   const listRef = useRef<FlatList>(null);
@@ -103,7 +104,7 @@ export default function HOChatScreen({ onBack }: HOChatScreenProps) {
       <View style={styles.jobRef}>
         <Sparkles size={18} color={Colors.brandTeal} />
         <Text style={styles.jobRefText}>Home Deep Clean · May 13, 2026</Text>
-        <TouchableOpacity activeOpacity={0.8}>
+        <TouchableOpacity onPress={onViewJob} activeOpacity={0.8}>
           <Text style={styles.jobRefLink}>View Job</Text>
         </TouchableOpacity>
       </View>

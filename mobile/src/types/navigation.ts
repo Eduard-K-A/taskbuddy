@@ -36,6 +36,7 @@ export type HOScreen =
   | 'Chat'
   | 'Notifications'
   | 'Edit Profile'
+  | 'Dispute Filing'
   | 'Settings';
 
 // Provider screen keys

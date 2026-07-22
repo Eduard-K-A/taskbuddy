@@ -21,6 +21,7 @@ import {
   View,
 } from 'react-native';
 import { ArrowLeft, Camera } from 'lucide-react-native';
+import ConfirmationModal from '../../../src/components/ConfirmationModal';
 import { Colors, Radii, Shadows, Sizes, Spacing } from '../../../src/constants/theme';
 
 interface HOEditProfileScreenProps {
@@ -69,6 +70,10 @@ export default function HOEditProfileScreen({ onBack, onSave }: HOEditProfileScr
   const [phone, setPhone] = useState('+639876543218');
   const [location, setLocation] = useState('Brgy. Sampaguita, Lipa City, Batangas');
   const [bio, setBio] = useState('Homeowner looking for reliable service providers.');
+  const [showSaveConfirmation, setShowSaveConfirmation] = useState(false);
+  const hasChanges = name !== 'Alex Chen' || email !== 'alex@example.com' || phone !== '+639876543218'
+    || location !== 'Brgy. Sampaguita, Lipa City, Batangas' || bio !== 'Homeowner looking for reliable service providers.';
+  const requestSave = () => hasChanges ? setShowSaveConfirmation(true) : onSave();
 
   return (
     <View style={styles.screen}>
@@ -79,7 +84,7 @@ export default function HOEditProfileScreen({ onBack, onSave }: HOEditProfileScr
             <ArrowLeft size={20} color={Colors.white} />
           </TouchableOpacity>
           <Text style={styles.headerTitle}>Edit Profile</Text>
-          <TouchableOpacity onPress={onSave} activeOpacity={0.8}>
+          <TouchableOpacity onPress={requestSave} activeOpacity={0.8}>
             <Text style={styles.saveTextBtn}>Save</Text>
           </TouchableOpacity>
         </View>
@@ -125,13 +130,21 @@ export default function HOEditProfileScreen({ onBack, onSave }: HOEditProfileScr
             <FormField label="Bio" value={bio} onChangeText={setBio} placeholder="Tell providers about yourself..." multiline />
           </View>
 
-          <TouchableOpacity style={styles.saveBtn} onPress={onSave} activeOpacity={0.85}>
+          <TouchableOpacity style={styles.saveBtn} onPress={requestSave} activeOpacity={0.85}>
             <Text style={styles.saveBtnText}>Save Changes</Text>
           </TouchableOpacity>
 
           <View style={{ height: 20 }} />
         </ScrollView>
       </KeyboardAvoidingView>
+      <ConfirmationModal
+        visible={showSaveConfirmation}
+        title="Save profile changes?"
+        message="Your updated profile details will be saved and shown in your account."
+        confirmLabel="Save Changes"
+        onCancel={() => setShowSaveConfirmation(false)}
+        onConfirm={() => { setShowSaveConfirmation(false); onSave(); }}
+      />
     </View>
   );
 }

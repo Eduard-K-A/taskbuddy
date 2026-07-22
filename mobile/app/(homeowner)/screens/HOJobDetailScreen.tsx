@@ -11,7 +11,7 @@
  * - Action buttons: Chat, Cancel, Dispute
  */
 
-import React, { useState } from 'react';
+import React from 'react';
 import {
   ScrollView,
   StyleSheet,
@@ -41,8 +41,6 @@ interface HOJobDetailScreenProps {
 }
 
 export default function HOJobDetailScreen({ onBack, onNavigate }: HOJobDetailScreenProps) {
-  const [showDispute, setShowDispute] = useState(false);
-
   return (
     <View style={styles.screen}>
       {/* Header */}
@@ -175,7 +173,7 @@ export default function HOJobDetailScreen({ onBack, onNavigate }: HOJobDetailScr
 
         <TouchableOpacity
           style={styles.disputeBtn}
-          onPress={() => setShowDispute(true)}
+          onPress={() => onNavigate('Dispute Filing')}
           activeOpacity={0.85}
         >
           <View style={styles.disputeBtnContent}>
