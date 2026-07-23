@@ -1,6 +1,14 @@
 # TaskBuddy Admin Console
 
-The admin dashboard for the TaskBuddy platform (`web/` in the repo). Next.js 16 App Router, TypeScript, Tailwind CSS v4, Lucide React, and Recharts. Runs entirely on mock data today, with a built-in data seam so switching to the real backend is a per-function swap — no page or component changes.
+The admin dashboard for the TaskBuddy platform (`web/` in the repo). Next.js 16 App Router, TypeScript, Tailwind CSS v4, Lucide React, and Recharts. Login, Users, Bookings, and Reports/Analytics run against the live backend; Verifications and Transactions still run on mock data via a built-in data seam (see [Real Backend Integration](#real-backend-integration)).
+
+## Live Deployment
+
+- **URL**: https://taskbuddy-nine-zeta.vercel.app
+- **Backend**: https://taskbuddy-1d48.onrender.com (Render, free plan)
+- **Database/Auth**: Supabase project `TaskBuddy` (`axtizgnurqnjzfjrngvd`)
+- **Env vars set on Vercel**: `NEXT_PUBLIC_USE_MOCK=false`, `NEXT_PUBLIC_API_URL=https://taskbuddy-1d48.onrender.com`
+- **Admin login**: `admin@taskbuddy.com` (real Supabase account, Email auth provider — ask Eduard or Christian for the password)
 
 ## Tech Stack
 
@@ -14,7 +22,7 @@ The admin dashboard for the TaskBuddy platform (`web/` in the repo). Next.js 16 
 
 ## Features
 
-- 🔐 Login / Auth Screen (mock credentials: `admin@taskbuddy.io` / `Admin123!`)
+- 🔐 Login / Auth Screen (real Supabase Email auth — see [Live Deployment](#live-deployment) for the admin login)
 - 📊 Dashboard Overview — live stats, revenue chart, category breakdown, activity feed
 - 🛡️ Provider Verification Queue — approve/reject with live state
 - 👥 User Management — searchable table with role/status badges
@@ -31,7 +39,14 @@ npm install
 npm run dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000).
+Open [http://localhost:3000](http://localhost:3000). By default this points at
+`http://localhost:3001` (a local `backend/` instance). To hit the live Render
+backend instead, create `.env.local`:
+
+```bash
+NEXT_PUBLIC_USE_MOCK=false
+NEXT_PUBLIC_API_URL=https://taskbuddy-1d48.onrender.com
+```
 
 Other scripts:
 

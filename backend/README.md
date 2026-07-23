@@ -75,6 +75,7 @@ Job lifecycle: `open → recommending → assigned → in_progress → completed
    | `0002_functions_and_triggers.sql` | signup trigger, lifecycle triggers, cached-stat triggers, `haversine_km`, `fn_job_provider_features` |
    | `0003_rls.sql` | Row Level Security policies |
    | `0004_seed.sql` | 5 categories + urgency timeouts |
+   | `0005_admin_role.sql` | adds `'admin'` to `user_role` enum + `admin_user_overview` view (profiles ⋈ `auth.users` email, service-role only) for the Admin Dashboard (#29/#31/#32). Admins can't self-register — promote a user manually after this migration (see the comment at the end of the file). |
 
 3. (Development) In Authentication → Providers → Email, consider disabling
    "Confirm email" so `POST /auth/register` returns a session immediately.
@@ -196,6 +197,27 @@ All bodies are JSON. 🔒 = requires auth; (client) / (provider) = role-restrict
 | `GET /notifications?unread=true` 🔒 | newest 50 |
 | `POST /notifications/:id/read` 🔒 | mark one read |
 | `POST /notifications/read-all` 🔒 | mark all read |
+
+**Admin** (🔒 admin role only — 401 without a token, 403 for non-admins)
+
+| Method & path | Description |
+|---|---|
+| `GET /admin/users?search=&role=&status=&limit=&offset=` | search/filter users (`role`: client/provider/admin, `status`: active/suspended) |
+| `GET /admin/users/:id` | single user detail (from `admin_user_overview`) |
+| `POST /admin/users/:id/suspend` | deactivate an account (blocks their login) — refuses if already suspended or if the target is an admin |
+| `POST /admin/users/:id/reinstate` | reactivate a suspended account |
+| `GET /admin/bookings?status=&category_id=&limit=&offset=` | platform-wide bookings view (story #31) |
+| `POST /admin/bookings/:id/cancel` | force-cancel a booking — refuses if already `completed`/`cancelled`/`expired` |
+| `GET /admin/analytics/summary` | totals (users/clients/providers/suspended/bookings), bookings by status/category, daily booking trend, top 10 providers by completed jobs (story #32) |
+
+Admin accounts can't self-register (`POST /auth/register` only allows
+`client`/`provider`) and log in through the same `POST /auth/login` as
+everyone else — there's no separate admin login endpoint. See
+`0005_admin_role.sql` above for how to promote an account to `admin`.
+
+**Not yet implemented on the admin side:** a change-password endpoint (the
+admin web console still mocks this), and anything for Verifications or
+Transactions — those have no backing tables yet.
 
 ### Errors
 
