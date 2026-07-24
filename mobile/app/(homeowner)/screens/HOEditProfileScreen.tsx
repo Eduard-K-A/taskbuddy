@@ -23,6 +23,9 @@ import {
 import { ArrowLeft, Camera } from 'lucide-react-native';
 import ConfirmationModal from '../../../src/components/ConfirmationModal';
 import { Colors, Radii, Shadows, Sizes, Spacing } from '../../../src/constants/theme';
+import { useAuth } from '../../../src/context/AuthContext';
+import { api } from '../../../src/lib/api';
+import { initials } from '../../../src/lib/format';
 
 interface HOEditProfileScreenProps {
   onBack: () => void;
@@ -36,26 +39,34 @@ function FormField({
   placeholder,
   multiline,
   keyboardType,
+  editable = true,
 }: {
   label: string;
   value: string;
-  onChangeText: (v: string) => void;
+  onChangeText?: (v: string) => void;
   placeholder?: string;
   multiline?: boolean;
   keyboardType?: 'default' | 'email-address' | 'phone-pad';
+  editable?: boolean;
 }) {
   const [focused, setFocused] = useState(false);
   return (
     <View style={styles.fieldGroup}>
       <Text style={styles.fieldLabel}>{label}</Text>
       <TextInput
-        style={[styles.fieldInput, multiline && styles.fieldInputMultiline, focused && styles.fieldInputFocused]}
+        style={[
+          styles.fieldInput,
+          multiline && styles.fieldInputMultiline,
+          focused && styles.fieldInputFocused,
+          !editable && styles.fieldInputDisabled,
+        ]}
         value={value}
         onChangeText={onChangeText}
         placeholder={placeholder}
         placeholderTextColor={Colors.muted}
         multiline={multiline}
         keyboardType={keyboardType}
+        editable={editable}
         autoCapitalize={keyboardType === 'email-address' ? 'none' : 'words'}
         onFocus={() => setFocused(true)}
         onBlur={() => setFocused(false)}
@@ -65,15 +76,51 @@ function FormField({
 }
 
 export default function HOEditProfileScreen({ onBack, onSave }: HOEditProfileScreenProps) {
-  const [name, setName] = useState('Alex Chen');
-  const [email, setEmail] = useState('alex@example.com');
-  const [phone, setPhone] = useState('+639876543218');
-  const [location, setLocation] = useState('Brgy. Sampaguita, Lipa City, Batangas');
-  const [bio, setBio] = useState('Homeowner looking for reliable service providers.');
+  const { profile, refreshProfile } = useAuth();
+  const [name, setName] = useState(profile?.full_name ?? '');
+  const [phone, setPhone] = useState(profile?.phone ?? '');
+  const [location, setLocation] = useState(profile?.address ?? '');
+  const [city, setCity] = useState(profile?.city ?? '');
   const [showSaveConfirmation, setShowSaveConfirmation] = useState(false);
-  const hasChanges = name !== 'Alex Chen' || email !== 'alex@example.com' || phone !== '+639876543218'
-    || location !== 'Brgy. Sampaguita, Lipa City, Batangas' || bio !== 'Homeowner looking for reliable service providers.';
-  const requestSave = () => hasChanges ? setShowSaveConfirmation(true) : onSave();
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const email = profile?.email ?? '';
+
+  const hasChanges =
+    name !== (profile?.full_name ?? '') ||
+    phone !== (profile?.phone ?? '') ||
+    location !== (profile?.address ?? '') ||
+    city !== (profile?.city ?? '');
+
+  const requestSave = () => {
+    setError(null);
+    if (!name.trim()) {
+      setError('Full name cannot be empty.');
+      return;
+    }
+    if (hasChanges) setShowSaveConfirmation(true);
+    else onSave();
+  };
+
+  const performSave = async () => {
+    setShowSaveConfirmation(false);
+    setSaving(true);
+    setError(null);
+    try {
+      await api.updateProfile({
+        full_name: name.trim(),
+        phone: phone.trim(),
+        address: location.trim(),
+        city: city.trim(),
+      });
+      await refreshProfile();
+      onSave();
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Could not save changes.');
+    } finally {
+      setSaving(false);
+    }
+  };
 
   return (
     <View style={styles.screen}>
@@ -92,7 +139,7 @@ export default function HOEditProfileScreen({ onBack, onSave }: HOEditProfileScr
         {/* Avatar */}
         <View style={styles.avatarSection}>
           <View style={styles.avatarCircle}>
-            <Text style={styles.avatarText}>AC</Text>
+            <Text style={styles.avatarText}>{initials(name)}</Text>
           </View>
           <TouchableOpacity style={styles.changePhotoBtn} activeOpacity={0.8}>
             <View style={styles.changePhotoBtnContent}>
@@ -116,22 +163,25 @@ export default function HOEditProfileScreen({ onBack, onSave }: HOEditProfileScr
           <View style={styles.card}>
             <Text style={styles.cardTitle}>Personal Information</Text>
             <FormField label="Full Name" value={name} onChangeText={setName} placeholder="Your full name" />
-            <FormField label="Email Address" value={email} onChangeText={setEmail} placeholder="email@example.com" keyboardType="email-address" />
+            <FormField label="Email Address" value={email} placeholder="email@example.com" keyboardType="email-address" editable={false} />
             <FormField label="Phone Number" value={phone} onChangeText={setPhone} placeholder="+63 9XX XXX XXXX" keyboardType="phone-pad" />
           </View>
 
           <View style={styles.card}>
             <Text style={styles.cardTitle}>Location</Text>
-            <FormField label="Home Address" value={location} onChangeText={setLocation} placeholder="Brgy., City, Province" />
+            <FormField label="Home Address" value={location} onChangeText={setLocation} placeholder="House no., Barangay, Street" />
+            <FormField label="City" value={city} onChangeText={setCity} placeholder="City / Municipality" />
           </View>
 
-          <View style={styles.card}>
-            <Text style={styles.cardTitle}>About</Text>
-            <FormField label="Bio" value={bio} onChangeText={setBio} placeholder="Tell providers about yourself..." multiline />
-          </View>
+          {!!error && <Text style={styles.errorText}>{error}</Text>}
 
-          <TouchableOpacity style={styles.saveBtn} onPress={requestSave} activeOpacity={0.85}>
-            <Text style={styles.saveBtnText}>Save Changes</Text>
+          <TouchableOpacity
+            style={[styles.saveBtn, saving && styles.saveBtnDisabled]}
+            onPress={requestSave}
+            activeOpacity={0.85}
+            disabled={saving}
+          >
+            <Text style={styles.saveBtnText}>{saving ? 'Saving…' : 'Save Changes'}</Text>
           </TouchableOpacity>
 
           <View style={{ height: 20 }} />
@@ -143,7 +193,7 @@ export default function HOEditProfileScreen({ onBack, onSave }: HOEditProfileScr
         message="Your updated profile details will be saved and shown in your account."
         confirmLabel="Save Changes"
         onCancel={() => setShowSaveConfirmation(false)}
-        onConfirm={() => { setShowSaveConfirmation(false); onSave(); }}
+        onConfirm={performSave}
       />
     </View>
   );
@@ -202,6 +252,9 @@ const styles = StyleSheet.create({
   },
   fieldInputMultiline: { height: 90, textAlignVertical: 'top' },
   fieldInputFocused: { borderColor: Colors.brandTeal },
+  fieldInputDisabled: { color: Colors.muted, backgroundColor: 'rgba(144,153,184,0.08)' },
+
+  errorText: { color: Colors.error, fontSize: 13, fontFamily: 'Inter', marginBottom: 12, textAlign: 'center' },
 
   saveBtn: {
     backgroundColor: Colors.brandTeal, borderRadius: 24, paddingVertical: 15,
@@ -209,5 +262,6 @@ const styles = StyleSheet.create({
     shadowColor: Colors.brandTeal, shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.35, shadowRadius: 12, elevation: 5,
   },
+  saveBtnDisabled: { opacity: 0.7 },
   saveBtnText: { color: Colors.white, fontSize: 15, fontWeight: '600', fontFamily: 'Inter', letterSpacing: 0.3 },
 });

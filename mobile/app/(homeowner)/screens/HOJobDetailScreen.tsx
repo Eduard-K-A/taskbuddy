@@ -11,8 +11,9 @@
  * - Action buttons: Chat, Cancel, Dispute
  */
 
-import React from 'react';
+import React, { useState } from 'react';
 import {
+  ActivityIndicator,
   ScrollView,
   StyleSheet,
   Text,
@@ -21,26 +22,58 @@ import {
 } from 'react-native';
 import {
   ArrowLeft,
+  AlignLeft,
   CalendarDays,
-  ChevronRight,
   CircleAlert,
-  Clock3,
   MapPin,
   MessageCircle,
   MoreHorizontal,
-  ShieldCheck,
   Star,
+  TriangleAlert,
   Wrench,
 } from 'lucide-react-native';
 import { Colors, Radii, Shadows, Sizes, Spacing } from '../../../src/constants/theme';
 import { HOScreen } from '../../../src/types/navigation';
+import { useAsyncData } from '../../../src/hooks/useAsyncData';
+import { api } from '../../../src/lib/api';
+import { initials, jobStatusMeta, shortDate } from '../../../src/lib/format';
 
 interface HOJobDetailScreenProps {
+  jobId: string | null;
   onBack: () => void;
-  onNavigate: (screen: HOScreen) => void;
+  onNavigate: (screen: HOScreen, jobId?: string) => void;
 }
 
-export default function HOJobDetailScreen({ onBack, onNavigate }: HOJobDetailScreenProps) {
+export default function HOJobDetailScreen({ jobId, onBack, onNavigate }: HOJobDetailScreenProps) {
+  const { data, loading, error, reload } = useAsyncData(async () => {
+    if (!jobId) throw new Error('No job selected.');
+    const job = await api.getJob(jobId);
+    const provider = job.assigned_provider_id
+      ? await api.getProvider(job.assigned_provider_id).catch(() => null)
+      : null;
+    return { job, provider };
+  }, [jobId]);
+
+  const [busy, setBusy] = useState(false);
+
+  const job = data?.job;
+  const provider = data?.provider;
+  const meta = job ? jobStatusMeta(job.status) : null;
+
+  const runAction = async (fn: () => Promise<unknown>) => {
+    setBusy(true);
+    try {
+      await fn();
+      reload();
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const canCancel =
+    job && ['open', 'recommending', 'assigned', 'in_progress'].includes(job.status);
+  const canComplete = job?.status === 'in_progress';
+
   return (
     <View style={styles.screen}>
       {/* Header */}
@@ -57,133 +90,157 @@ export default function HOJobDetailScreen({ onBack, onNavigate }: HOJobDetailScr
 
         {/* Job overview */}
         <View style={styles.jobOverview}>
-          <Text style={styles.jobTitle}>Home Deep Clean</Text>
-          <View style={styles.statusPill}>
-            <View style={styles.statusDot} />
-            <Text style={styles.statusText}>In Progress</Text>
-          </View>
+          <Text style={styles.jobTitle}>{job?.title ?? 'Job Details'}</Text>
+          {meta && (
+            <View style={[styles.statusPill, { backgroundColor: meta.bg }]}>
+              <View style={[styles.statusDot, { backgroundColor: meta.color }]} />
+              <Text style={[styles.statusText, { color: meta.color }]}>{meta.label}</Text>
+            </View>
+          )}
         </View>
       </View>
 
-      <ScrollView
-        style={styles.body}
-        contentContainerStyle={styles.bodyContent}
-        showsVerticalScrollIndicator={false}
-      >
-        {/* Provider card */}
-        <View style={styles.card}>
-          <Text style={styles.cardTitle}>Service Provider</Text>
-          <View style={styles.providerRow}>
-            <View style={styles.providerAvatar}>
-              <Text style={styles.providerAvatarText}>JD</Text>
-            </View>
-            <View style={styles.providerInfo}>
-              <Text style={styles.providerName}>Juan dela Cruz</Text>
-              <View style={styles.providerRatingRow}>
-                <Star size={12} color={Colors.slate} fill={Colors.slate} />
-                <Text style={styles.providerRating}>4.8 · 47 jobs completed</Text>
+      {loading && <ActivityIndicator style={{ marginTop: 40 }} color={Colors.brandTeal} />}
+      {!!error && !loading && <Text style={styles.stateText}>{error}</Text>}
+
+      {job && (
+        <ScrollView
+          style={styles.body}
+          contentContainerStyle={styles.bodyContent}
+          showsVerticalScrollIndicator={false}
+        >
+          {/* Provider card */}
+          {provider ? (
+            <View style={styles.card}>
+              <Text style={styles.cardTitle}>Service Provider</Text>
+              <View style={styles.providerRow}>
+                <View style={styles.providerAvatar}>
+                  <Text style={styles.providerAvatarText}>{initials(provider.profiles?.full_name)}</Text>
+                </View>
+                <View style={styles.providerInfo}>
+                  <Text style={styles.providerName}>{provider.profiles?.full_name ?? 'Provider'}</Text>
+                  <View style={styles.providerRatingRow}>
+                    <Star size={12} color={Colors.slate} fill={Colors.slate} />
+                    <Text style={styles.providerRating}>
+                      {provider.cached_avg_rating != null
+                        ? `${Number(provider.cached_avg_rating).toFixed(1)} · `
+                        : 'New · '}
+                      {provider.cached_completed_jobs} jobs completed
+                    </Text>
+                  </View>
+                </View>
+                <TouchableOpacity
+                  style={styles.chatBtn}
+                  onPress={() => onNavigate('Chat', job.id)}
+                  activeOpacity={0.8}
+                >
+                  <MessageCircle size={16} color={Colors.white} />
+                  <Text style={styles.chatBtnText}>Chat</Text>
+                </TouchableOpacity>
               </View>
             </View>
+          ) : (
+            <View style={styles.card}>
+              <Text style={styles.cardTitle}>Service Provider</Text>
+              <Text style={styles.detailValue}>
+                No provider assigned yet. You'll be notified when someone is matched.
+              </Text>
+            </View>
+          )}
+
+          {/* Job details */}
+          <View style={styles.card}>
+            <Text style={styles.cardTitle}>Job Details</Text>
+            {[
+              { icon: Wrench, label: 'Service', value: job.service_categories?.name ?? '—' },
+              { icon: MapPin, label: 'Location', value: job.address },
+              { icon: TriangleAlert, label: 'Urgency', value: job.urgency },
+              { icon: CalendarDays, label: 'Posted', value: shortDate(job.posted_at) },
+              { icon: AlignLeft, label: 'Description', value: job.description },
+            ].map((item) => (
+              <View key={item.label} style={styles.detailRow}>
+                <item.icon size={18} color={Colors.brandTeal} />
+                <View style={styles.detailContent}>
+                  <Text style={styles.detailLabel}>{item.label}</Text>
+                  <Text style={styles.detailValue}>{item.value}</Text>
+                </View>
+              </View>
+            ))}
+          </View>
+
+          {/* Timeline (derived from the job's real timestamps) */}
+          <View style={styles.card}>
+            <Text style={styles.cardTitle}>Timeline</Text>
+            {[
+              { label: 'Job Posted', date: shortDate(job.posted_at), done: true },
+              { label: 'Provider Assigned', date: job.assigned_at ? shortDate(job.assigned_at as string) : '—', done: !!job.assigned_provider_id },
+              { label: 'In Progress', date: job.status === 'in_progress' || job.status === 'completed' ? '✓' : '—', done: job.status === 'in_progress' || job.status === 'completed' },
+              { label: 'Completed', date: job.completed_at ? shortDate(job.completed_at as string) : '—', done: job.status === 'completed' },
+            ].map((item, i, arr) => (
+              <View key={item.label} style={styles.timelineRow}>
+                <View style={[styles.timelineDot, item.done && styles.timelineDotDone]} />
+                {i < arr.length - 1 && <View style={[styles.timelineLine, item.done && styles.timelineLineDone]} />}
+                <View style={styles.timelineContent}>
+                  <Text style={[styles.timelineLabel, item.done && styles.timelineLabelDone]}>{item.label}</Text>
+                  <Text style={styles.timelineDate}>{item.date}</Text>
+                </View>
+              </View>
+            ))}
+          </View>
+
+          {/* Actions */}
+          {provider && (
             <TouchableOpacity
-              style={styles.chatBtn}
-              onPress={() => onNavigate('Chat')}
-              activeOpacity={0.8}
+              style={styles.chatFullBtn}
+              onPress={() => onNavigate('Chat', job.id)}
+              activeOpacity={0.85}
             >
-              <MessageCircle size={16} color={Colors.white} />
-              <Text style={styles.chatBtnText}>Chat</Text>
+              <View style={styles.chatFullBtnContent}>
+                <MessageCircle size={16} color={Colors.white} />
+                <Text style={styles.chatFullBtnText}>Open Chat with Provider</Text>
+              </View>
             </TouchableOpacity>
-          </View>
-        </View>
+          )}
 
-        {/* Job details */}
-        <View style={styles.card}>
-          <Text style={styles.cardTitle}>Job Details</Text>
-          {[
-            { icon: Wrench, label: 'Service', value: 'Deep Cleaning' },
-            { icon: MapPin, label: 'Location', value: 'Brgy. Sabang, Lipa City, Batangas' },
-            { icon: CalendarDays, label: 'Date', value: 'May 13, 2026' },
-            { icon: Clock3, label: 'Time', value: '10:00 AM' },
-            { icon: ChevronRight, label: 'Description', value: '3-bedroom apartment, full deep clean including bathroom and kitchen' },
-          ].map((item) => (
-            <View key={item.label} style={styles.detailRow}>
-              <item.icon size={18} color={Colors.brandTeal} />
-              <View style={styles.detailContent}>
-                <Text style={styles.detailLabel}>{item.label}</Text>
-                <Text style={styles.detailValue}>{item.value}</Text>
+          {canComplete && (
+            <TouchableOpacity
+              style={styles.completeBtn}
+              onPress={() => runAction(() => api.completeJob(job.id))}
+              activeOpacity={0.85}
+              disabled={busy}
+            >
+              <Text style={styles.completeBtnText}>Mark as Completed</Text>
+            </TouchableOpacity>
+          )}
+
+          {canCancel && (
+            <TouchableOpacity
+              style={styles.disputeBtn}
+              onPress={() => runAction(async () => { await api.cancelJob(job.id); onBack(); })}
+              activeOpacity={0.85}
+              disabled={busy}
+            >
+              <View style={styles.disputeBtnContent}>
+                <CircleAlert size={16} color={Colors.error} />
+                <Text style={styles.disputeBtnText}>Cancel Job</Text>
               </View>
+            </TouchableOpacity>
+          )}
+
+          <TouchableOpacity
+            style={styles.disputeBtn}
+            onPress={() => onNavigate('Dispute Filing')}
+            activeOpacity={0.85}
+          >
+            <View style={styles.disputeBtnContent}>
+              <CircleAlert size={16} color={Colors.error} />
+              <Text style={styles.disputeBtnText}>File a Dispute</Text>
             </View>
-          ))}
-        </View>
+          </TouchableOpacity>
 
-        {/* Payment */}
-        <View style={styles.card}>
-          <Text style={styles.cardTitle}>Payment</Text>
-          {[
-            { label: 'Service Fee', value: '₱800' },
-            { label: 'Platform Fee (5%)', value: '₱40' },
-            { label: 'Voucher Applied', value: '-₱0' },
-          ].map((item) => (
-            <View key={item.label} style={styles.payRow}>
-              <Text style={styles.payLabel}>{item.label}</Text>
-              <Text style={styles.payValue}>{item.value}</Text>
-            </View>
-          ))}
-          <View style={[styles.payRow, styles.payTotal]}>
-            <Text style={styles.payTotalLabel}>Total</Text>
-            <Text style={styles.payTotalValue}>₱840</Text>
-          </View>
-          <View style={styles.escrowNote}>
-            <ShieldCheck size={16} color="#22C55E" />
-            <Text style={styles.escrowText}>Payment held in escrow until job completion</Text>
-          </View>
-        </View>
-
-        {/* Timeline */}
-        <View style={styles.card}>
-          <Text style={styles.cardTitle}>Timeline</Text>
-          {[
-            { label: 'Job Posted', date: 'May 10, 2026', done: true },
-            { label: 'Provider Accepted', date: 'May 11, 2026', done: true },
-            { label: 'In Progress', date: 'May 13, 2026', done: true },
-            { label: 'Completed', date: '—', done: false },
-            { label: 'Payment Released', date: '—', done: false },
-          ].map((item, i) => (
-            <View key={item.label} style={styles.timelineRow}>
-              <View style={[styles.timelineDot, item.done && styles.timelineDotDone]} />
-              {i < 4 && <View style={[styles.timelineLine, item.done && styles.timelineLineDone]} />}
-              <View style={styles.timelineContent}>
-                <Text style={[styles.timelineLabel, item.done && styles.timelineLabelDone]}>{item.label}</Text>
-                <Text style={styles.timelineDate}>{item.date}</Text>
-              </View>
-            </View>
-          ))}
-        </View>
-
-        {/* Actions */}
-        <TouchableOpacity
-          style={styles.chatFullBtn}
-          onPress={() => onNavigate('Chat')}
-          activeOpacity={0.85}
-        >
-          <View style={styles.chatFullBtnContent}>
-            <MessageCircle size={16} color={Colors.white} />
-            <Text style={styles.chatFullBtnText}>Open Chat with Provider</Text>
-          </View>
-        </TouchableOpacity>
-
-        <TouchableOpacity
-          style={styles.disputeBtn}
-          onPress={() => onNavigate('Dispute Filing')}
-          activeOpacity={0.85}
-        >
-          <View style={styles.disputeBtnContent}>
-            <CircleAlert size={16} color={Colors.error} />
-            <Text style={styles.disputeBtnText}>File a Dispute</Text>
-          </View>
-        </TouchableOpacity>
-
-        <View style={{ height: 20 }} />
-      </ScrollView>
+          <View style={{ height: 20 }} />
+        </ScrollView>
+      )}
     </View>
   );
 }
@@ -280,6 +337,11 @@ const styles = StyleSheet.create({
   },
   chatFullBtnContent: { flexDirection: 'row', alignItems: 'center', gap: 6 },
   chatFullBtnText: { color: Colors.white, fontSize: 15, fontWeight: '700', fontFamily: 'Inter' },
+  stateText: { color: Colors.slate, fontSize: 14, fontFamily: 'Inter', textAlign: 'center', marginTop: 30, paddingHorizontal: Spacing.screenH },
+  completeBtn: {
+    backgroundColor: '#22C55E', borderRadius: 24, padding: 15, alignItems: 'center', marginBottom: 10,
+  },
+  completeBtnText: { color: Colors.white, fontSize: 15, fontWeight: '700', fontFamily: 'Inter' },
   disputeBtn: {
     borderWidth: 1, borderColor: '#EF4444', borderRadius: 24, padding: 15,
     alignItems: 'center', marginBottom: 10,

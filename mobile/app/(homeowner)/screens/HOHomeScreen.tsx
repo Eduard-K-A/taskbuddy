@@ -23,58 +23,57 @@ import {
   ArrowRight,
   Bell,
   BrushCleaning,
+  Hammer,
+  Hand,
   MapPin,
-  Package,
   Palette,
   Plus,
   Sparkles,
   Wrench,
-  Zap,
 } from 'lucide-react-native';
 import { Colors, Radii, Shadows, Sizes, Spacing } from '../../../src/constants/theme';
 import { HOScreen } from '../../../src/types/navigation';
+import { useAuth } from '../../../src/context/AuthContext';
+import { useAsyncData } from '../../../src/hooks/useAsyncData';
+import { api } from '../../../src/lib/api';
+import { initials, jobStatusMeta, peso, shortDate } from '../../../src/lib/format';
 
-const SERVICES = [
-  { label: 'General\nCleaning', icon: BrushCleaning },
-  { label: 'Painting', icon: Palette },
-  { label: 'Deep\nCleaning', icon: Sparkles },
-  { label: 'Moving', icon: Package },
-  { label: 'Plumbing', icon: Wrench },
-  { label: 'Electrical', icon: Zap },
-];
+const CATEGORY_ICON: Record<string, typeof Wrench> = {
+  Plumbing: Wrench,
+  Cleaning: BrushCleaning,
+  Handyman: Hammer,
+  Manicure: Sparkles,
+  Pedicure: Palette,
+};
 
-const JOBS = [
-  {
-    title: 'Home Deep Clean',
-    location: 'Brgy. Sabang, Lipa City, Batangas',
-    amount: '₱850',
-    status: 'Pending',
-    statusColor: '#F59E0B',
-    statusBg: '#FFF7ED',
-    priority: 'High Priority',
-    priorityBg: '#FEE2E2',
-    priorityColor: '#EF4444',
-    age: '45d ago',
-  },
-  {
-    title: 'Office Cleaning',
-    location: '1962 J.P. Laurel National High',
-    amount: '₱685',
-    status: 'In Progress',
-    statusColor: '#22C55E',
-    statusBg: '#F0FDF4',
-    priority: 'Medium Priority',
-    priorityBg: '#FEF9C3',
-    priorityColor: '#CA8A04',
-    age: '46d ago',
-  },
-];
+const ACTIVE_STATUSES = ['open', 'recommending', 'assigned', 'in_progress'];
 
 interface HOHomeScreenProps {
-  onNavigate: (screen: HOScreen) => void;
+  onNavigate: (screen: HOScreen, jobId?: string) => void;
 }
 
 export default function HOHomeScreen({ onNavigate }: HOHomeScreenProps) {
+  const { profile } = useAuth();
+  const { data } = useAsyncData(async () => {
+    const [wallet, jobs, cats, notifs] = await Promise.all([
+      api.wallet(),
+      api.myJobs(),
+      api.categories(),
+      api.notifications(true),
+    ]);
+    return { wallet, jobs, cats, notifs };
+  }, []);
+
+  const name = profile?.full_name ?? '';
+  const jobs = data?.jobs ?? [];
+  const activeJobs = jobs.filter((j) => ACTIVE_STATUSES.includes(j.status));
+  const pendingCount = jobs.filter((j) => ['open', 'recommending'].includes(j.status)).length;
+  const activeCount = jobs.filter((j) => ['assigned', 'in_progress'].includes(j.status)).length;
+  const doneCount = jobs.filter((j) => j.status === 'completed').length;
+  const unread = data?.notifs?.length ?? 0;
+  const location =
+    [profile?.city, profile?.address].filter(Boolean).join(', ') || 'Set your location';
+
   return (
     <View style={styles.screen}>
       {/* Hero Header */}
@@ -82,8 +81,8 @@ export default function HOHomeScreen({ onNavigate }: HOHomeScreenProps) {
         {/* Top row */}
         <View style={styles.heroTopRow}>
           <View>
-            <Text style={styles.greeting}>Good morning!</Text>
-            <Text style={styles.userName}>Alex Chen</Text>
+            <Text style={styles.greeting}>Welcome back!</Text>
+            <Text style={styles.userName}>{name || 'there'}</Text>
           </View>
           <View style={styles.heroActions}>
             <TouchableOpacity
@@ -92,14 +91,16 @@ export default function HOHomeScreen({ onNavigate }: HOHomeScreenProps) {
               activeOpacity={0.8}
             >
               <Bell size={18} color={Colors.white} />
-              <View style={styles.notifBadge}><Text style={styles.notifBadgeText}>2</Text></View>
+              {unread > 0 && (
+                <View style={styles.notifBadge}><Text style={styles.notifBadgeText}>{unread}</Text></View>
+              )}
             </TouchableOpacity>
             <TouchableOpacity
               style={styles.avatarCircle}
               onPress={() => onNavigate('Profile')}
               activeOpacity={0.8}
             >
-              <Text style={styles.avatarText}>AC</Text>
+              <Text style={styles.avatarText}>{initials(name)}</Text>
             </TouchableOpacity>
           </View>
         </View>
@@ -109,7 +110,7 @@ export default function HOHomeScreen({ onNavigate }: HOHomeScreenProps) {
           <View style={styles.walletRow}>
             <View>
               <Text style={styles.walletLabel}>Wallet Balance</Text>
-              <Text style={styles.walletAmount}>₱250.00</Text>
+              <Text style={styles.walletAmount}>{data ? peso(data.wallet.balance) : '—'}</Text>
             </View>
             <TouchableOpacity
               style={styles.addBtn}
@@ -118,16 +119,16 @@ export default function HOHomeScreen({ onNavigate }: HOHomeScreenProps) {
             >
               <View style={styles.addBtnContent}>
                 <Plus size={14} color={Colors.white} />
-                <Text style={styles.addBtnText}>Add</Text>
+                <Text style={styles.addBtnText}>Wallet</Text>
               </View>
             </TouchableOpacity>
           </View>
 
           <View style={styles.statusRow}>
             {[
-              { dot: '#F59E0B', label: '1 pending' },
-              { dot: '#22C55E', label: '1 active' },
-              { dot: '#71C7FF', label: '2 done' },
+              { dot: '#F59E0B', label: `${pendingCount} pending` },
+              { dot: '#22C55E', label: `${activeCount} active` },
+              { dot: '#71C7FF', label: `${doneCount} done` },
             ].map((s) => (
               <View key={s.label} style={styles.statusChip}>
                 <View style={[styles.statusDot, { backgroundColor: s.dot }]} />
@@ -139,9 +140,8 @@ export default function HOHomeScreen({ onNavigate }: HOHomeScreenProps) {
           <View style={styles.locationRow}>
             <View style={styles.locationTextWrap}>
               <MapPin size={13} color={Colors.slate} />
-              <Text style={styles.locationText}>Brgy. Sampaguita, ...</Text>
+              <Text style={styles.locationText} numberOfLines={1}>{location}</Text>
             </View>
-            <Text style={styles.radiusText}>5 mi radius</Text>
           </View>
         </View>
       </View>
@@ -160,17 +160,20 @@ export default function HOHomeScreen({ onNavigate }: HOHomeScreenProps) {
           style={styles.servicesScroll}
           contentContainerStyle={styles.servicesContent}
         >
-          {SERVICES.map((svc) => (
-            <TouchableOpacity
-              key={svc.label}
-              style={styles.serviceCard}
-              onPress={() => onNavigate('Create Job')}
-              activeOpacity={0.85}
-            >
-              <svc.icon size={28} color={Colors.brandDark} />
-              <Text style={styles.serviceLabel}>{svc.label}</Text>
-            </TouchableOpacity>
-          ))}
+          {(data?.cats ?? []).map((cat) => {
+            const Icon = CATEGORY_ICON[cat.name] ?? Hand;
+            return (
+              <TouchableOpacity
+                key={cat.id}
+                style={styles.serviceCard}
+                onPress={() => onNavigate('Create Job')}
+                activeOpacity={0.85}
+              >
+                <Icon size={28} color={Colors.brandDark} />
+                <Text style={styles.serviceLabel}>{cat.name}</Text>
+              </TouchableOpacity>
+            );
+          })}
         </ScrollView>
 
         {/* Active Jobs */}
@@ -181,44 +184,45 @@ export default function HOHomeScreen({ onNavigate }: HOHomeScreenProps) {
           </TouchableOpacity>
         </View>
 
-        {JOBS.map((job) => (
-          <TouchableOpacity
-            key={job.title}
-            style={styles.jobCard}
-            onPress={() => onNavigate('Job Detail')}
-            activeOpacity={0.9}
-          >
-            <View style={styles.jobCardHeader}>
-              <Text style={styles.jobTitle}>{job.title}</Text>
-              <View style={[styles.statusPill, { backgroundColor: job.statusBg }]}>
-                <Text style={[styles.statusPillText, { color: job.statusColor }]}>{job.status}</Text>
-              </View>
-            </View>
-            <View style={styles.jobLocationWrap}>
-              <MapPin size={13} color={Colors.slate} />
-              <Text style={styles.jobLocation}>{job.location}</Text>
-            </View>
-            <View style={styles.jobMetaRow}>
-              <View style={[styles.priorityChip, { backgroundColor: job.priorityBg }]}>
-                <Text style={[styles.priorityText, { color: job.priorityColor }]}>{job.priority}</Text>
-              </View>
-              <Text style={styles.ageText}>{job.age}</Text>
-            </View>
-            <View style={styles.jobFooter}>
-              <Text style={styles.jobAmount}>{job.amount}</Text>
-              <TouchableOpacity
-                style={styles.viewBtn}
-                onPress={() => onNavigate('Job Detail')}
-                activeOpacity={0.8}
-              >
-                <View style={styles.viewBtnContent}>
-                  <Text style={styles.viewBtnText}>View Job</Text>
-                  <ArrowRight size={14} color={Colors.white} />
+        {activeJobs.length === 0 && (
+          <Text style={styles.emptyText}>No active jobs. Tap a service above to post one.</Text>
+        )}
+
+        {activeJobs.map((job) => {
+          const meta = jobStatusMeta(job.status);
+          return (
+            <TouchableOpacity
+              key={job.id}
+              style={styles.jobCard}
+              onPress={() => onNavigate('Job Detail', job.id)}
+              activeOpacity={0.9}
+            >
+              <View style={styles.jobCardHeader}>
+                <Text style={styles.jobTitle}>{job.title}</Text>
+                <View style={[styles.statusPill, { backgroundColor: meta.bg }]}>
+                  <Text style={[styles.statusPillText, { color: meta.color }]}>{meta.label}</Text>
                 </View>
-              </TouchableOpacity>
-            </View>
-          </TouchableOpacity>
-        ))}
+              </View>
+              <View style={styles.jobLocationWrap}>
+                <MapPin size={13} color={Colors.slate} />
+                <Text style={styles.jobLocation}>{job.address}</Text>
+              </View>
+              <View style={styles.jobFooter}>
+                <Text style={styles.ageText}>Posted {shortDate(job.posted_at)}</Text>
+                <TouchableOpacity
+                  style={styles.viewBtn}
+                  onPress={() => onNavigate('Job Detail', job.id)}
+                  activeOpacity={0.8}
+                >
+                  <View style={styles.viewBtnContent}>
+                    <Text style={styles.viewBtnText}>View Job</Text>
+                    <ArrowRight size={14} color={Colors.white} />
+                  </View>
+                </TouchableOpacity>
+              </View>
+            </TouchableOpacity>
+          );
+        })}
 
         <View style={{ height: 20 }} />
       </ScrollView>
@@ -335,6 +339,7 @@ const styles = StyleSheet.create({
   ageText: { color: Colors.slate, fontSize: 12, fontFamily: 'Inter' },
   jobFooter: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
   jobAmount: { color: Colors.brandDark, fontSize: 22, fontWeight: '800', fontFamily: 'Inter' },
+  emptyText: { color: Colors.slate, fontSize: 14, fontFamily: 'Inter', textAlign: 'center', paddingVertical: 16 },
   viewBtn: {
     backgroundColor: Colors.brandTeal, borderRadius: 14,
     paddingHorizontal: 14, paddingVertical: 8,

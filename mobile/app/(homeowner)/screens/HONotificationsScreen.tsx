@@ -9,8 +9,9 @@
  * - Read/unread state
  */
 
-import React, { useState } from 'react';
+import React from 'react';
 import {
+  ActivityIndicator,
   ScrollView,
   StyleSheet,
   Text,
@@ -21,83 +22,56 @@ import {
   ArrowLeft,
   BellRing,
   CircleCheckBig,
-  CircleDollarSign,
-  MessageCircle,
-  Star,
   Trophy,
 } from 'lucide-react-native';
 import { Colors, Radii, Shadows, Sizes, Spacing } from '../../../src/constants/theme';
+import { useAsyncData } from '../../../src/hooks/useAsyncData';
+import { api } from '../../../src/lib/api';
+import { dateBucket, timeAgo } from '../../../src/lib/format';
 
-const NOTIFICATIONS = [
-  {
-    id: '1',
-    icon: CircleCheckBig,
-    iconBg: '#F0FDF4',
-    title: 'Job Accepted',
-    message: 'Juan dela Cruz has accepted your Home Deep Clean request.',
-    time: '10 mins ago',
-    read: false,
-    date: 'Today',
-  },
-  {
-    id: '2',
-    icon: MessageCircle,
-    iconBg: '#EFF6FF',
-    title: 'New Message',
-    message: 'Maria Santos sent you a message regarding your Office Cleaning job.',
-    time: '1 hour ago',
-    read: false,
-    date: 'Today',
-  },
-  {
-    id: '3',
-    icon: CircleDollarSign,
-    iconBg: '#FFF7ED',
-    title: 'Payment Processed',
-    message: 'Your payment of ₱850 for Home Deep Clean has been processed.',
-    time: '3 hours ago',
-    read: true,
-    date: 'Today',
-  },
-  {
-    id: '4',
-    icon: Star,
-    iconBg: '#FFFBEB',
-    title: 'Rate Your Experience',
-    message: 'How was Rosa Villanueva\'s Airbnb Turnover service? Leave a review.',
-    time: 'Yesterday',
-    read: true,
-    date: 'Yesterday',
-  },
-  {
-    id: '5',
-    icon: Trophy,
-    iconBg: '#F5F3FF',
-    title: 'Welcome to TaskBuddy!',
-    message: 'Your account is set up. Start posting jobs and find the best service providers.',
-    time: 'May 10',
-    read: true,
-    date: 'Earlier',
-  },
-];
+interface NotificationRow {
+  id: string;
+  type: string;
+  title: string;
+  body: string;
+  read_at: string | null;
+  created_at: string;
+}
+
+const ICON_BY_TYPE: Record<string, { icon: typeof BellRing; bg: string }> = {
+  recommendation_invite: { icon: Trophy, bg: '#F5F3FF' },
+  application_update: { icon: CircleCheckBig, bg: '#F0FDF4' },
+  job_update: { icon: BellRing, bg: '#EFF6FF' },
+};
 
 interface HONotificationsProps {
   onBack: () => void;
 }
 
 export default function HONotificationsScreen({ onBack }: HONotificationsProps) {
-  const [notifications, setNotifications] = useState(NOTIFICATIONS);
-  const unreadCount = notifications.filter((n) => !n.read).length;
+  const { data, loading, error, reload } = useAsyncData(
+    () => api.notifications() as Promise<NotificationRow[]>,
+    [],
+  );
+  const notifications = data ?? [];
+  const unreadCount = notifications.filter((n) => !n.read_at).length;
 
-  const markAllRead = () => {
-    setNotifications((prev) => prev.map((n) => ({ ...n, read: true })));
+  const markAllRead = async () => {
+    await api.markAllNotificationsRead();
+    reload();
   };
 
-  // Group by date
-  const groups: Record<string, typeof NOTIFICATIONS> = {};
+  const markRead = async (id: string) => {
+    await api.markNotificationRead(id);
+    reload();
+  };
+
+  // Group by date bucket, preserving order (Today, Yesterday, Earlier).
+  const groups: Record<string, NotificationRow[]> = {};
   notifications.forEach((n) => {
-    if (!groups[n.date]) groups[n.date] = [];
-    groups[n.date].push(n);
+    const bucket = dateBucket(n.created_at);
+    if (!groups[bucket]) groups[bucket] = [];
+    groups[bucket].push(n);
   });
 
   return (
@@ -129,31 +103,39 @@ export default function HONotificationsScreen({ onBack }: HONotificationsProps) 
         contentContainerStyle={styles.bodyContent}
         showsVerticalScrollIndicator={false}
       >
+        {loading && <ActivityIndicator style={{ marginTop: 20 }} color={Colors.brandTeal} />}
+        {!!error && !loading && <Text style={styles.stateText}>{error}</Text>}
+        {!loading && !error && notifications.length === 0 && (
+          <Text style={styles.stateText}>You have no notifications yet.</Text>
+        )}
         {Object.entries(groups).map(([date, items]) => (
           <View key={date}>
             <Text style={styles.dateGroup}>{date}</Text>
-            {items.map((notif) => (
-              <TouchableOpacity
-                key={notif.id}
-                style={[styles.notifCard, !notif.read && styles.notifCardUnread]}
-                activeOpacity={0.85}
-                onPress={() => setNotifications((prev) =>
-                  prev.map((n) => n.id === notif.id ? { ...n, read: true } : n)
-                )}
-              >
-                <View style={[styles.notifIcon, { backgroundColor: notif.iconBg }]}>
-                  <notif.icon size={20} color={Colors.brandDark} />
-                </View>
-                <View style={styles.notifContent}>
-                  <View style={styles.notifTitleRow}>
-                    <Text style={styles.notifTitle}>{notif.title}</Text>
-                    {!notif.read && <View style={styles.unreadDot} />}
+            {items.map((notif) => {
+              const meta = ICON_BY_TYPE[notif.type] ?? { icon: BellRing, bg: '#EFF6FF' };
+              const Icon = meta.icon;
+              const isRead = !!notif.read_at;
+              return (
+                <TouchableOpacity
+                  key={notif.id}
+                  style={[styles.notifCard, !isRead && styles.notifCardUnread]}
+                  activeOpacity={0.85}
+                  onPress={() => !isRead && markRead(notif.id)}
+                >
+                  <View style={[styles.notifIcon, { backgroundColor: meta.bg }]}>
+                    <Icon size={20} color={Colors.brandDark} />
                   </View>
-                  <Text style={styles.notifMessage}>{notif.message}</Text>
-                  <Text style={styles.notifTime}>{notif.time}</Text>
-                </View>
-              </TouchableOpacity>
-            ))}
+                  <View style={styles.notifContent}>
+                    <View style={styles.notifTitleRow}>
+                      <Text style={styles.notifTitle}>{notif.title}</Text>
+                      {!isRead && <View style={styles.unreadDot} />}
+                    </View>
+                    <Text style={styles.notifMessage}>{notif.body}</Text>
+                    <Text style={styles.notifTime}>{timeAgo(notif.created_at)}</Text>
+                  </View>
+                </TouchableOpacity>
+              );
+            })}
           </View>
         ))}
         <View style={{ height: 20 }} />
@@ -197,6 +179,7 @@ const styles = StyleSheet.create({
     color: Colors.muted, fontSize: 12, fontWeight: '700', fontFamily: 'Inter',
     textTransform: 'uppercase', letterSpacing: 0.8, marginBottom: 10, marginTop: 4,
   },
+  stateText: { color: Colors.slate, fontSize: 14, fontFamily: 'Inter', textAlign: 'center', marginTop: 30 },
 
   notifCard: {
     backgroundColor: Colors.white, borderRadius: Radii.card,

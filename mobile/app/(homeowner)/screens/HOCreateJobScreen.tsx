@@ -27,25 +27,28 @@ import {
   BrushCleaning,
   CheckCircle2,
   Hammer,
-  Leaf,
+  Hand,
   Palette,
-  Package,
   Sparkles,
   Wrench,
-  Zap,
 } from 'lucide-react-native';
 import { Colors, Radii, Shadows, Sizes, Spacing } from '../../../src/constants/theme';
+import { useAuth } from '../../../src/context/AuthContext';
+import { useAsyncData } from '../../../src/hooks/useAsyncData';
+import { api } from '../../../src/lib/api';
+import { peso } from '../../../src/lib/format';
 
-const SERVICES = [
-  { label: 'General Cleaning', icon: BrushCleaning, desc: 'Regular household cleaning' },
-  { label: 'Deep Cleaning', icon: Sparkles, desc: 'Thorough intensive cleaning' },
-  { label: 'Painting', icon: Palette, desc: 'Interior & exterior painting' },
-  { label: 'Plumbing', icon: Wrench, desc: 'Pipes, fixtures & repairs' },
-  { label: 'Electrical', icon: Zap, desc: 'Wiring & electrical work' },
-  { label: 'Moving', icon: Package, desc: 'Local & long-distance moving' },
-  { label: 'Landscaping', icon: Leaf, desc: 'Garden & lawn maintenance' },
-  { label: 'Carpentry', icon: Hammer, desc: 'Wood work & furniture' },
-];
+// Icon + blurb per real service category (the 5 seeded in the DB).
+const CATEGORY_META: Record<string, { icon: typeof Wrench; desc: string }> = {
+  Plumbing: { icon: Wrench, desc: 'Pipes, fixtures & repairs' },
+  Cleaning: { icon: BrushCleaning, desc: 'Home & deep cleaning' },
+  Handyman: { icon: Hammer, desc: 'Repairs & odd jobs' },
+  Manicure: { icon: Sparkles, desc: 'Nail care & manicure' },
+  Pedicure: { icon: Palette, desc: 'Foot care & pedicure' },
+};
+
+// Fallback coordinates (Metro Manila) when the client has no saved location.
+const FALLBACK_COORDS = { latitude: 14.5995, longitude: 120.9842 };
 
 interface HOCreateJobScreenProps {
   onBack: () => void;
@@ -53,8 +56,12 @@ interface HOCreateJobScreenProps {
 }
 
 export default function HOCreateJobScreen({ onBack, onSuccess }: HOCreateJobScreenProps) {
+  const { profile } = useAuth();
+  const categories = useAsyncData(() => api.categories(), []);
+
   const [step, setStep] = useState(1);
-  const [selectedService, setSelectedService] = useState('');
+  const [categoryId, setCategoryId] = useState<number | null>(null);
+  const [categoryName, setCategoryName] = useState('');
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
   const [location, setLocation] = useState('');
@@ -62,18 +69,59 @@ export default function HOCreateJobScreen({ onBack, onSuccess }: HOCreateJobScre
   const [time, setTime] = useState('');
   const [budget, setBudget] = useState('');
   const [isUrgent, setIsUrgent] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   const totalSteps = 5;
 
+  const validateStep = (): string | null => {
+    if (step === 1 && !categoryId) return 'Please select a service.';
+    if (step === 2) {
+      if (title.trim().length < 5) return 'Title must be at least 5 characters.';
+      if (description.trim().length < 20)
+        return 'Description must be at least 20 characters.';
+      if (!location.trim()) return 'Please enter a location.';
+    }
+    return null;
+  };
+
+  const submitJob = async () => {
+    setSubmitting(true);
+    setError(null);
+    try {
+      await api.createJob({
+        category_id: categoryId!,
+        title: title.trim(),
+        description: description.trim(),
+        urgency: isUrgent ? 'urgent' : 'normal',
+        address: location.trim(),
+        latitude: profile?.latitude ?? FALLBACK_COORDS.latitude,
+        longitude: profile?.longitude ?? FALLBACK_COORDS.longitude,
+      });
+      setStep(6); // success
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Could not post the job.');
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
   const handleNext = () => {
+    const validationError = validateStep();
+    if (validationError) {
+      setError(validationError);
+      return;
+    }
+    setError(null);
     if (step < totalSteps) {
       setStep((s) => s + 1);
     } else {
-      setStep(6); // success
+      void submitJob();
     }
   };
 
   const handleBack = () => {
+    setError(null);
     if (step === 1) {
       onBack();
     } else if (step === 6) {
@@ -93,20 +141,20 @@ export default function HOCreateJobScreen({ onBack, onSuccess }: HOCreateJobScre
           </View>
           <Text style={styles.successTitle}>Job Posted!</Text>
           <Text style={styles.successSubtitle}>
-            Your job "{title || selectedService}" has been posted successfully. Service providers in your area will be notified.
+            Your job "{title || categoryName}" has been posted successfully. Service providers in your area will be notified.
           </Text>
           <View style={styles.successCard}>
             <View style={styles.successRow}>
               <Text style={styles.successLabel}>Service</Text>
-              <Text style={styles.successValue}>{selectedService}</Text>
+              <Text style={styles.successValue}>{categoryName}</Text>
             </View>
             <View style={styles.successRow}>
               <Text style={styles.successLabel}>Location</Text>
-              <Text style={styles.successValue}>{location || 'Brgy. Sampaguita'}</Text>
+              <Text style={styles.successValue}>{location}</Text>
             </View>
             <View style={styles.successRow}>
-              <Text style={styles.successLabel}>Budget</Text>
-              <Text style={styles.successValue}>₱{budget || '850'}</Text>
+              <Text style={styles.successLabel}>Urgency</Text>
+              <Text style={styles.successValue}>{isUrgent ? 'Urgent' : 'Normal'}</Text>
             </View>
           </View>
           <TouchableOpacity style={styles.primaryBtn} onPress={onSuccess} activeOpacity={0.85}>
@@ -149,21 +197,28 @@ export default function HOCreateJobScreen({ onBack, onSuccess }: HOCreateJobScre
           <View>
             <Text style={styles.stepTitle}>Select a Service</Text>
             <Text style={styles.stepSubtitle}>What service do you need?</Text>
+            {categories.loading && <Text style={styles.serviceDesc}>Loading services…</Text>}
+            {!!categories.error && <Text style={styles.errorText}>{categories.error}</Text>}
             <View style={styles.serviceGrid}>
-              {SERVICES.map((svc) => (
-                <TouchableOpacity
-                  key={svc.label}
-                  style={[styles.serviceCard, selectedService === svc.label && styles.serviceCardActive]}
-                  onPress={() => setSelectedService(svc.label)}
-                  activeOpacity={0.85}
-                >
-                  <svc.icon size={28} color={selectedService === svc.label ? Colors.brandTeal : Colors.brandDark} />
-                  <Text style={[styles.serviceLabel, selectedService === svc.label && styles.serviceLabelActive]}>
-                    {svc.label}
-                  </Text>
-                  <Text style={styles.serviceDesc}>{svc.desc}</Text>
-                </TouchableOpacity>
-              ))}
+              {(categories.data ?? []).map((cat) => {
+                const meta = CATEGORY_META[cat.name] ?? { icon: Hand, desc: '' };
+                const Icon = meta.icon;
+                const active = categoryId === cat.id;
+                return (
+                  <TouchableOpacity
+                    key={cat.id}
+                    style={[styles.serviceCard, active && styles.serviceCardActive]}
+                    onPress={() => { setCategoryId(cat.id); setCategoryName(cat.name); }}
+                    activeOpacity={0.85}
+                  >
+                    <Icon size={28} color={active ? Colors.brandTeal : Colors.brandDark} />
+                    <Text style={[styles.serviceLabel, active && styles.serviceLabelActive]}>
+                      {cat.name}
+                    </Text>
+                    <Text style={styles.serviceDesc}>{meta.desc}</Text>
+                  </TouchableOpacity>
+                );
+              })}
             </View>
           </View>
         )}
@@ -281,7 +336,7 @@ export default function HOCreateJobScreen({ onBack, onSuccess }: HOCreateJobScre
             </View>
 
             <Text style={styles.budgetHint}>
-              Suggested: ₱500 – ₱1,200 for {selectedService || 'this service'}
+              Suggested: ₱500 – ₱1,200 for {categoryName || 'this service'}
             </Text>
 
             <Text style={styles.inputLabel}>Payment Type</Text>
@@ -302,12 +357,12 @@ export default function HOCreateJobScreen({ onBack, onSuccess }: HOCreateJobScre
 
             <View style={styles.reviewCard}>
               {[
-                { label: 'Service', value: selectedService || 'Not selected' },
+                { label: 'Service', value: categoryName || 'Not selected' },
                 { label: 'Title', value: title || 'Untitled' },
                 { label: 'Location', value: location || 'Not set' },
                 { label: 'Date', value: date || 'Flexible' },
                 { label: 'Time', value: time || 'Flexible' },
-                { label: 'Budget', value: budget ? `₱${budget}` : 'Not set' },
+                { label: 'Budget', value: budget ? peso(budget) : 'Not set' },
                 { label: 'Urgent', value: isUrgent ? 'Yes' : 'No' },
               ].map((item) => (
                 <View key={item.label} style={styles.reviewRow}>
@@ -331,9 +386,15 @@ export default function HOCreateJobScreen({ onBack, onSuccess }: HOCreateJobScre
 
       {/* Footer */}
       <View style={styles.footer}>
-        <TouchableOpacity style={styles.primaryBtn} onPress={handleNext} activeOpacity={0.85}>
+        {!!error && <Text style={styles.errorText}>{error}</Text>}
+        <TouchableOpacity
+          style={[styles.primaryBtn, submitting && styles.primaryBtnDisabled]}
+          onPress={handleNext}
+          activeOpacity={0.85}
+          disabled={submitting}
+        >
           <Text style={styles.primaryBtnText}>
-            {step === totalSteps ? 'Post Job' : 'Next'}
+            {submitting ? 'Posting…' : step === totalSteps ? 'Post Job' : 'Next'}
           </Text>
         </TouchableOpacity>
       </View>
@@ -457,6 +518,8 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.35, shadowRadius: 12, elevation: 5,
   },
   primaryBtnText: { color: Colors.white, fontSize: 15, fontWeight: '600', fontFamily: 'Inter', letterSpacing: 0.3 },
+  primaryBtnDisabled: { opacity: 0.7 },
+  errorText: { color: Colors.error, fontSize: 13, fontFamily: 'Inter', marginBottom: 10, textAlign: 'center' },
 
   // Success
   successScreen: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: 32 },

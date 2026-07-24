@@ -10,8 +10,9 @@
  * - Message input bar at bottom
  */
 
-import React, { useState, useRef } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 import {
+  ActivityIndicator,
   FlatList,
   KeyboardAvoidingView,
   Platform,
@@ -29,54 +30,79 @@ import {
   Sparkles,
 } from 'lucide-react-native';
 import { Colors, Radii, Shadows, Sizes, Spacing } from '../../../src/constants/theme';
-
-interface Message {
-  id: string;
-  text: string;
-  sent: boolean;
-  time: string;
-}
-
-const INITIAL_MESSAGES: Message[] = [
-  { id: '1', text: 'Hi! I\'m on my way to your location. ETA is around 15 minutes.', sent: false, time: '9:45 AM' },
-  { id: '2', text: 'Great! The door is unlocked, feel free to come in.', sent: true, time: '9:47 AM' },
-  { id: '3', text: 'Should I start with the kitchen or the bedrooms?', sent: false, time: '9:48 AM' },
-  { id: '4', text: 'Please start with the bedrooms. The kids need to sleep early tonight.', sent: true, time: '9:49 AM' },
-  { id: '5', text: 'No problem! I\'ll get started right away.', sent: false, time: '9:50 AM' },
-];
+import { useAuth } from '../../../src/context/AuthContext';
+import { api, type Conversation, type Message } from '../../../src/lib/api';
+import { initials, shortDate, timeOfDay } from '../../../src/lib/format';
 
 interface HOChatScreenProps {
+  jobId: string | null;
   onBack: () => void;
   onViewJob: () => void;
 }
 
-export default function HOChatScreen({ onBack, onViewJob }: HOChatScreenProps) {
-  const [messages, setMessages] = useState<Message[]>(INITIAL_MESSAGES);
+export default function HOChatScreen({ jobId, onBack, onViewJob }: HOChatScreenProps) {
+  const { profile } = useAuth();
+  const [conversation, setConversation] = useState<Conversation | null>(null);
+  const [messages, setMessages] = useState<Message[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [text, setText] = useState('');
+  const [sending, setSending] = useState(false);
   const listRef = useRef<FlatList>(null);
 
-  const handleSend = () => {
-    if (!text.trim()) return;
-    const newMsg: Message = {
-      id: String(Date.now()),
-      text: text.trim(),
-      sent: true,
-      time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+  useEffect(() => {
+    let active = true;
+    (async () => {
+      setLoading(true);
+      setError(null);
+      try {
+        if (!jobId) throw new Error('No conversation selected.');
+        const convo = await api.openConversation(jobId);
+        const msgs = await api.messages(convo.id);
+        if (active) {
+          setConversation(convo);
+          setMessages(msgs);
+        }
+        api.markConversationRead(convo.id).catch(() => {});
+      } catch (e) {
+        if (active) setError(e instanceof Error ? e.message : 'Could not load chat.');
+      } finally {
+        if (active) setLoading(false);
+      }
+    })();
+    return () => {
+      active = false;
     };
-    setMessages((prev) => [...prev, newMsg]);
-    setText('');
-    setTimeout(() => listRef.current?.scrollToEnd({ animated: true }), 100);
+  }, [jobId]);
+
+  const handleSend = async () => {
+    const body = text.trim();
+    if (!body || !conversation || sending) return;
+    setSending(true);
+    try {
+      const msg = await api.sendMessage(conversation.id, body);
+      setMessages((prev) => [...prev, msg]);
+      setText('');
+      setTimeout(() => listRef.current?.scrollToEnd({ animated: true }), 100);
+    } catch {
+      // Keep the text so the user can retry.
+    } finally {
+      setSending(false);
+    }
   };
 
-  const renderBubble = ({ item }: { item: Message }) => (
-    <View style={[styles.bubbleRow, item.sent && styles.bubbleRowSent]}>
-      {!item.sent && <View style={styles.avatar}><Text style={styles.avatarText}>JD</Text></View>}
-      <View style={[styles.bubble, item.sent ? styles.bubbleSent : styles.bubbleReceived]}>
-        <Text style={[styles.bubbleText, item.sent && styles.bubbleTextSent]}>{item.text}</Text>
-        <Text style={[styles.bubbleTime, item.sent && styles.bubbleTimeSent]}>{item.time}</Text>
+  const renderBubble = ({ item }: { item: Message }) => {
+    const sent = item.sender_id === profile?.id;
+    return (
+      <View style={[styles.bubbleRow, sent && styles.bubbleRowSent]}>
+        {!sent && <View style={styles.avatar}><Text style={styles.avatarText}>{initials(conversation?.counterpart_name)}</Text></View>}
+        <View style={[styles.bubble, sent ? styles.bubbleSent : styles.bubbleReceived]}>
+          <Text style={[styles.bubbleText, sent && styles.bubbleTextSent]}>{item.body}</Text>
+          <Text style={[styles.bubbleTime, sent && styles.bubbleTimeSent]}>{timeOfDay(item.created_at)}</Text>
+        </View>
       </View>
-    </View>
-  );
+    );
+  };
 
   return (
     <View style={styles.screen}>
@@ -86,13 +112,12 @@ export default function HOChatScreen({ onBack, onViewJob }: HOChatScreenProps) {
           <ArrowLeft size={20} color={Colors.white} />
         </TouchableOpacity>
         <View style={styles.headerAvatar}>
-          <Text style={styles.headerAvatarText}>JD</Text>
+          <Text style={styles.headerAvatarText}>{initials(conversation?.counterpart_name)}</Text>
         </View>
         <View style={styles.headerInfo}>
-          <Text style={styles.headerName}>Juan dela Cruz</Text>
+          <Text style={styles.headerName}>{conversation?.counterpart_name ?? 'Chat'}</Text>
           <View style={styles.onlineRow}>
-            <View style={styles.onlineDot} />
-            <Text style={styles.onlineText}>Online</Text>
+            <Text style={styles.onlineText}>{conversation?.job_status ?? ''}</Text>
           </View>
         </View>
         <TouchableOpacity style={styles.callBtn} activeOpacity={0.8}>
@@ -103,7 +128,10 @@ export default function HOChatScreen({ onBack, onViewJob }: HOChatScreenProps) {
       {/* Job reference card */}
       <View style={styles.jobRef}>
         <Sparkles size={18} color={Colors.brandTeal} />
-        <Text style={styles.jobRefText}>Home Deep Clean · May 13, 2026</Text>
+        <Text style={styles.jobRefText}>
+          {conversation?.job_title ?? 'Job'}
+          {conversation ? ` · ${shortDate(conversation.created_at)}` : ''}
+        </Text>
         <TouchableOpacity onPress={onViewJob} activeOpacity={0.8}>
           <Text style={styles.jobRefLink}>View Job</Text>
         </TouchableOpacity>
@@ -115,6 +143,11 @@ export default function HOChatScreen({ onBack, onViewJob }: HOChatScreenProps) {
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
         keyboardVerticalOffset={0}
       >
+        {loading && <ActivityIndicator style={{ marginTop: 30 }} color={Colors.brandTeal} />}
+        {!!error && !loading && <Text style={styles.errorText}>{error}</Text>}
+        {!loading && !error && messages.length === 0 && (
+          <Text style={styles.errorText}>No messages yet. Say hello 👋</Text>
+        )}
         <FlatList
           ref={listRef}
           data={messages}
@@ -199,6 +232,7 @@ const styles = StyleSheet.create({
   jobRefLink: { color: Colors.brandTeal, fontSize: 13, fontWeight: '700', fontFamily: 'Inter' },
 
   chatContent: { paddingHorizontal: Spacing.screenH, paddingVertical: 16, gap: 10 },
+  errorText: { color: Colors.slate, fontSize: 13, fontFamily: 'Inter', textAlign: 'center', marginTop: 20 },
 
   bubbleRow: { flexDirection: 'row', alignItems: 'flex-end', gap: 8, marginBottom: 8 },
   bubbleRowSent: { flexDirection: 'row-reverse' },

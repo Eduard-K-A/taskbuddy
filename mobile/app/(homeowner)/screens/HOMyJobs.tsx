@@ -11,6 +11,7 @@
 
 import React, { useState } from 'react';
 import {
+  ActivityIndicator,
   ScrollView,
   StyleSheet,
   Text,
@@ -21,82 +22,28 @@ import {
   CalendarDays,
   MapPin,
   Plus,
-  UserRound,
 } from 'lucide-react-native';
 import { Colors, Radii, Shadows, Sizes, Spacing } from '../../../src/constants/theme';
 import { HOScreen } from '../../../src/types/navigation';
+import { useAsyncData } from '../../../src/hooks/useAsyncData';
+import { api } from '../../../src/lib/api';
+import { jobFilterBucket, jobStatusMeta, shortDate } from '../../../src/lib/format';
 
 const FILTER_TABS = ['All', 'Active', 'Pending', 'Completed'];
 
-const JOBS = [
-  {
-    id: '1',
-    title: 'Home Deep Clean',
-    category: 'Deep Cleaning',
-    location: 'Brgy. Sabang, Lipa City, Batangas',
-    amount: '₱850',
-    status: 'Pending',
-    statusColor: '#F59E0B',
-    statusBg: '#FFF7ED',
-    date: 'May 13, 2026',
-    time: '10:00 AM',
-    provider: 'Juan dela Cruz',
-    barColor: '#F59E0B',
-  },
-  {
-    id: '2',
-    title: 'Office Cleaning',
-    category: 'General Cleaning',
-    location: '1962 J.P. Laurel National High',
-    amount: '₱685',
-    status: 'In Progress',
-    statusColor: '#22C55E',
-    statusBg: '#F0FDF4',
-    date: 'May 14, 2026',
-    time: '2:00 PM',
-    provider: 'Maria Santos',
-    barColor: '#22C55E',
-  },
-  {
-    id: '3',
-    title: 'Airbnb Turnover',
-    category: 'Deep Cleaning',
-    location: 'Brgy. Sampaguita, Lipa City',
-    amount: '₱895',
-    status: 'Completed',
-    statusColor: '#3B82F6',
-    statusBg: '#EFF6FF',
-    date: 'May 8, 2026',
-    time: '3:00 PM',
-    provider: 'Rosa Villanueva',
-    barColor: '#3B82F6',
-  },
-  {
-    id: '4',
-    title: 'Plumbing Repair',
-    category: 'Plumbing',
-    location: 'Brgy. Tambo, Lipa City',
-    amount: '₱1,200',
-    status: 'Pending',
-    statusColor: '#F59E0B',
-    statusBg: '#FFF7ED',
-    date: 'May 20, 2026',
-    time: '9:00 AM',
-    provider: 'Pending Assignment',
-    barColor: '#F59E0B',
-  },
-];
-
 interface MyJobsProps {
-  onNavigate: (screen: HOScreen) => void;
+  onNavigate: (screen: HOScreen, jobId?: string) => void;
 }
 
 export default function MyJobs({ onNavigate }: MyJobsProps) {
   const [activeFilter, setActiveFilter] = useState('All');
+  const { data, loading, error } = useAsyncData(() => api.myJobs(), []);
+  const jobs = data ?? [];
 
-  const filtered = activeFilter === 'All'
-    ? JOBS
-    : JOBS.filter((j) => j.status === activeFilter || (activeFilter === 'Active' && j.status === 'In Progress'));
+  const filtered =
+    activeFilter === 'All'
+      ? jobs
+      : jobs.filter((j) => jobFilterBucket(j.status) === activeFilter);
 
   return (
     <View style={styles.screen}>
@@ -108,7 +55,7 @@ export default function MyJobs({ onNavigate }: MyJobsProps) {
             <Text style={styles.headerTitle}>My Jobs</Text>
           </View>
           <View style={styles.jobsBadge}>
-            <Text style={styles.jobsBadgeText}>{JOBS.length} jobs</Text>
+            <Text style={styles.jobsBadgeText}>{jobs.length} jobs</Text>
           </View>
         </View>
 
@@ -139,42 +86,46 @@ export default function MyJobs({ onNavigate }: MyJobsProps) {
         contentContainerStyle={styles.bodyContent}
         showsVerticalScrollIndicator={false}
       >
-        {filtered.map((job) => (
-          <TouchableOpacity
-            key={job.id}
-            style={styles.jobCard}
-            onPress={() => onNavigate('Job Detail')}
-            activeOpacity={0.9}
-          >
-            <View style={[styles.jobBar, { backgroundColor: job.barColor }]} />
-            <View style={styles.jobContent}>
-              <View style={styles.jobCardHeader}>
-                <Text style={styles.jobTitle}>{job.title}</Text>
-                <View style={[styles.statusPill, { backgroundColor: job.statusBg }]}>
-                  <Text style={[styles.statusPillText, { color: job.statusColor }]}>{job.status}</Text>
+        {loading && <ActivityIndicator style={{ marginTop: 30 }} color={Colors.brandTeal} />}
+        {!!error && !loading && <Text style={styles.stateText}>{error}</Text>}
+        {!loading && !error && filtered.length === 0 && (
+          <Text style={styles.stateText}>
+            {jobs.length === 0 ? 'You haven\'t posted any jobs yet.' : 'No jobs in this filter.'}
+          </Text>
+        )}
+        {filtered.map((job) => {
+          const meta = jobStatusMeta(job.status);
+          return (
+            <TouchableOpacity
+              key={job.id}
+              style={styles.jobCard}
+              onPress={() => onNavigate('Job Detail', job.id)}
+              activeOpacity={0.9}
+            >
+              <View style={[styles.jobBar, { backgroundColor: meta.color }]} />
+              <View style={styles.jobContent}>
+                <View style={styles.jobCardHeader}>
+                  <Text style={styles.jobTitle}>{job.title}</Text>
+                  <View style={[styles.statusPill, { backgroundColor: meta.bg }]}>
+                    <Text style={[styles.statusPillText, { color: meta.color }]}>{meta.label}</Text>
+                  </View>
+                </View>
+                <Text style={styles.jobCategory}>{job.service_categories?.name ?? ''}</Text>
+                <View style={styles.jobLocationRow}>
+                  <MapPin size={13} color={Colors.slate} />
+                  <Text style={styles.jobLocation}>{job.address}</Text>
+                </View>
+                <View style={styles.jobFooter}>
+                  <View style={styles.jobMetaItem}>
+                    <CalendarDays size={13} color={Colors.slate} />
+                    <Text style={styles.jobMeta}>Posted {shortDate(job.posted_at)}</Text>
+                  </View>
+                  <Text style={styles.jobUrgency}>{job.urgency}</Text>
                 </View>
               </View>
-              <Text style={styles.jobCategory}>{job.category}</Text>
-              <View style={styles.jobLocationRow}>
-                <MapPin size={13} color={Colors.slate} />
-                <Text style={styles.jobLocation}>{job.location}</Text>
-              </View>
-              <View style={styles.jobMetaRow}>
-                <View style={styles.jobMetaItem}>
-                  <CalendarDays size={13} color={Colors.slate} />
-                  <Text style={styles.jobMeta}>{job.date} · {job.time}</Text>
-                </View>
-              </View>
-              <View style={styles.jobFooter}>
-                <View style={styles.jobProviderRow}>
-                  <UserRound size={13} color={Colors.muted} />
-                  <Text style={styles.jobProvider}>{job.provider}</Text>
-                </View>
-                <Text style={styles.jobAmount}>{job.amount}</Text>
-              </View>
-            </View>
-          </TouchableOpacity>
-        ))}
+            </TouchableOpacity>
+          );
+        })}
         <View style={{ height: 20 }} />
       </ScrollView>
 
@@ -248,7 +199,8 @@ const styles = StyleSheet.create({
   jobFooter: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
   jobProviderRow: { flexDirection: 'row', alignItems: 'center', gap: 4 },
   jobProvider: { color: Colors.muted, fontSize: 12, fontFamily: 'Inter' },
-  jobAmount: { color: Colors.brandDark, fontSize: 18, fontWeight: '800', fontFamily: 'Inter' },
+  jobUrgency: { color: Colors.brandTeal, fontSize: 12, fontWeight: '700', fontFamily: 'Inter', textTransform: 'capitalize' },
+  stateText: { color: Colors.slate, fontSize: 14, fontFamily: 'Inter', textAlign: 'center', marginTop: 30 },
 
   fab: {
     position: 'absolute', bottom: 24, right: Spacing.screenH,

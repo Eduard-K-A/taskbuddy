@@ -12,6 +12,7 @@
 
 import React, { useState } from 'react';
 import {
+  ActivityIndicator,
   ScrollView,
   StyleSheet,
   Text,
@@ -23,21 +24,13 @@ import {
   ArrowLeft,
   ArrowUpRight,
   ArrowRightLeft,
-  Building2,
   CircleDollarSign,
-  Home,
   Package,
-  Wallet,
 } from 'lucide-react-native';
 import { Colors, Radii, Shadows, Sizes, Spacing } from '../../../src/constants/theme';
-
-const TRANSACTIONS = [
-  { id: '1', title: 'Home Deep Clean', type: 'debit', amount: '₱850', date: 'May 13, 2026', status: 'Completed', icon: Package },
-  { id: '2', title: 'Added via GCash', type: 'credit', amount: '+₱500', date: 'May 12, 2026', status: 'Successful', icon: CircleDollarSign },
-  { id: '3', title: 'Office Cleaning', type: 'debit', amount: '₱685', date: 'May 10, 2026', status: 'In Progress', icon: Building2 },
-  { id: '4', title: 'Added via Maya', type: 'credit', amount: '+₱1,000', date: 'May 8, 2026', status: 'Successful', icon: CircleDollarSign },
-  { id: '5', title: 'Airbnb Turnover', type: 'debit', amount: '₱895', date: 'May 7, 2026', status: 'Completed', icon: Home },
-];
+import { useAsyncData } from '../../../src/hooks/useAsyncData';
+import { api } from '../../../src/lib/api';
+import { peso, shortDate } from '../../../src/lib/format';
 
 interface HOWalletScreenProps {
   onBack?: () => void;
@@ -45,10 +38,13 @@ interface HOWalletScreenProps {
 
 export default function HOWalletScreen({ onBack }: HOWalletScreenProps) {
   const [activeTab, setActiveTab] = useState<'all' | 'credit' | 'debit'>('all');
+  const { data, loading, error } = useAsyncData(() => api.wallet(), []);
 
-  const filtered = activeTab === 'all'
-    ? TRANSACTIONS
-    : TRANSACTIONS.filter((t) => t.type === activeTab);
+  const transactions = data?.transactions ?? [];
+  const filtered =
+    activeTab === 'all'
+      ? transactions
+      : transactions.filter((t) => t.direction === activeTab);
 
   return (
     <View style={styles.screen}>
@@ -67,7 +63,9 @@ export default function HOWalletScreen({ onBack }: HOWalletScreenProps) {
         {/* Balance card */}
         <View style={styles.balanceCard}>
           <Text style={styles.balanceLabel}>Available Balance</Text>
-          <Text style={styles.balanceAmount}>₱250.00</Text>
+          <Text style={styles.balanceAmount}>
+            {data ? peso(data.balance) : '—'}
+          </Text>
           <View style={styles.quickActions}>
             <TouchableOpacity style={styles.quickActionBtn} activeOpacity={0.8}>
               <ArrowUpRight size={22} color={Colors.white} />
@@ -89,9 +87,9 @@ export default function HOWalletScreen({ onBack }: HOWalletScreenProps) {
         {/* Stats row */}
         <View style={styles.statsRow}>
           {[
-            { label: 'Spent', value: '₱2,430', color: '#F59E0B' },
-            { label: 'Added', value: '₱1,500', color: '#22C55E' },
-            { label: 'Pending', value: '₱850', color: '#94A3B8' },
+            { label: 'Spent', value: peso(data?.total_debited ?? 0), color: '#F59E0B' },
+            { label: 'Added', value: peso(data?.total_credited ?? 0), color: '#22C55E' },
+            { label: 'Pending', value: peso(data?.pending ?? 0), color: '#94A3B8' },
           ].map((s) => (
             <View key={s.label} style={styles.statItem}>
               <Text style={[styles.statValue, { color: s.color }]}>{s.value}</Text>
@@ -125,23 +123,34 @@ export default function HOWalletScreen({ onBack }: HOWalletScreenProps) {
 
         <Text style={styles.sectionTitle}>Transaction History</Text>
 
-        {filtered.map((txn) => (
-          <View key={txn.id} style={styles.txnCard}>
-            <View style={styles.txnIcon}>
-              <txn.icon size={22} color={Colors.brandDark} />
+        {loading && <ActivityIndicator style={{ marginTop: 20 }} color={Colors.brandTeal} />}
+        {!!error && !loading && <Text style={styles.stateText}>{error}</Text>}
+        {!loading && !error && filtered.length === 0 && (
+          <Text style={styles.stateText}>No transactions yet.</Text>
+        )}
+
+        {filtered.map((txn) => {
+          const Icon = txn.direction === 'credit' ? CircleDollarSign : Package;
+          const statusLabel =
+            txn.status.charAt(0).toUpperCase() + txn.status.slice(1);
+          return (
+            <View key={txn.id} style={styles.txnCard}>
+              <View style={styles.txnIcon}>
+                <Icon size={22} color={Colors.brandDark} />
+              </View>
+              <View style={styles.txnInfo}>
+                <Text style={styles.txnTitle}>{txn.title}</Text>
+                <Text style={styles.txnDate}>{shortDate(txn.created_at)} · {statusLabel}</Text>
+              </View>
+              <Text style={[
+                styles.txnAmount,
+                txn.direction === 'credit' ? styles.txnCredit : styles.txnDebit,
+              ]}>
+                {txn.direction === 'debit' ? '-' : '+'}{peso(txn.amount)}
+              </Text>
             </View>
-            <View style={styles.txnInfo}>
-              <Text style={styles.txnTitle}>{txn.title}</Text>
-              <Text style={styles.txnDate}>{txn.date} · {txn.status}</Text>
-            </View>
-            <Text style={[
-              styles.txnAmount,
-              txn.type === 'credit' ? styles.txnCredit : styles.txnDebit,
-            ]}>
-              {txn.type === 'debit' ? '-' : ''}{txn.amount}
-            </Text>
-          </View>
-        ))}
+          );
+        })}
         <View style={{ height: 20 }} />
       </ScrollView>
     </View>
@@ -203,6 +212,7 @@ const styles = StyleSheet.create({
   tabTextActive: { color: Colors.white },
 
   sectionTitle: { color: Colors.brandDark, fontSize: 16, fontWeight: '800', fontFamily: 'Inter', marginBottom: 14 },
+  stateText: { color: Colors.slate, fontSize: 14, fontFamily: 'Inter', textAlign: 'center', marginTop: 20 },
 
   txnCard: {
     backgroundColor: Colors.white, borderRadius: Radii.card,

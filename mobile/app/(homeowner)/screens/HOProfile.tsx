@@ -29,12 +29,10 @@ import {
 } from 'lucide-react-native';
 import { Colors, Radii, Shadows, Sizes, Spacing } from '../../../src/constants/theme';
 import { HOScreen } from '../../../src/types/navigation';
-
-const STATS = [
-  { label: 'Jobs Posted', value: '12' },
-  { label: 'Balance', value: '₱250' },
-  { label: 'Avg Rating', value: '4.9' },
-];
+import { useAuth } from '../../../src/context/AuthContext';
+import { useAsyncData } from '../../../src/hooks/useAsyncData';
+import { api } from '../../../src/lib/api';
+import { initials, monthYear, peso } from '../../../src/lib/format';
 
 const MENU_ITEMS: { label: string; icon: typeof Pencil; subtitle: string; screen: HOScreen | null }[] = [
   { label: 'Edit Profile', icon: Pencil, subtitle: 'Update your personal info', screen: 'Edit Profile' },
@@ -50,6 +48,18 @@ interface ProfileProps {
 }
 
 export default function Profile({ onNavigate, onLogout }: ProfileProps) {
+  const { profile } = useAuth();
+
+  // Live stats: jobs posted (own jobs) + wallet balance.
+  const stats = useAsyncData(async () => {
+    const [jobs, wallet] = await Promise.all([api.myJobs(), api.wallet()]);
+    return { jobsPosted: jobs.length, balance: wallet.balance };
+  }, []);
+
+  const name = profile?.full_name ?? '';
+  const location =
+    [profile?.city, profile?.address].filter(Boolean).join(', ') || '—';
+
   return (
     <View style={styles.screen}>
       {/* Hero Header */}
@@ -69,10 +79,10 @@ export default function Profile({ onNavigate, onLogout }: ProfileProps) {
         {/* Avatar + name */}
         <View style={styles.avatarSection}>
           <View style={styles.avatarCircle}>
-            <Text style={styles.avatarText}>AC</Text>
+            <Text style={styles.avatarText}>{initials(name)}</Text>
           </View>
           <View style={styles.avatarInfo}>
-            <Text style={styles.profileName}>Alex Chen</Text>
+            <Text style={styles.profileName}>{name || 'Your Profile'}</Text>
             <View style={styles.roleBadge}>
               <Text style={styles.roleBadgeText}>Homeowner</Text>
             </View>
@@ -81,12 +91,18 @@ export default function Profile({ onNavigate, onLogout }: ProfileProps) {
 
         {/* Stats */}
         <View style={styles.statsRow}>
-          {STATS.map((s) => (
-            <View key={s.label} style={styles.statCard}>
-              <Text style={styles.statValue}>{s.value}</Text>
-              <Text style={styles.statLabel}>{s.label}</Text>
-            </View>
-          ))}
+          <View style={styles.statCard}>
+            <Text style={styles.statValue}>
+              {stats.data ? stats.data.jobsPosted : '—'}
+            </Text>
+            <Text style={styles.statLabel}>Jobs Posted</Text>
+          </View>
+          <View style={styles.statCard}>
+            <Text style={styles.statValue}>
+              {stats.data ? peso(stats.data.balance) : '—'}
+            </Text>
+            <Text style={styles.statLabel}>Balance</Text>
+          </View>
         </View>
       </View>
 
@@ -99,10 +115,10 @@ export default function Profile({ onNavigate, onLogout }: ProfileProps) {
         <View style={styles.card}>
           <Text style={styles.cardTitle}>Account Info</Text>
           {[
-            { label: 'Email', value: 'alex@example.com' },
-            { label: 'Phone', value: '+639876543218' },
-            { label: 'Location', value: 'Brgy. Sampaguita...' },
-            { label: 'Member Since', value: 'March 2026' },
+            { label: 'Email', value: profile?.email ?? '—' },
+            { label: 'Phone', value: profile?.phone ?? '—' },
+            { label: 'Location', value: location },
+            { label: 'Member Since', value: monthYear(profile?.created_at) || '—' },
           ].map((item) => (
             <View key={item.label} style={styles.infoRow}>
               <Text style={styles.infoLabel}>{item.label}</Text>
