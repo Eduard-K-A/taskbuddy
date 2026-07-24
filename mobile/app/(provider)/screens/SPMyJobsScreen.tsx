@@ -11,6 +11,7 @@
 
 import React, { useState } from 'react';
 import {
+  ActivityIndicator,
   ScrollView,
   StyleSheet,
   Text,
@@ -20,50 +21,30 @@ import {
 import { ArrowRight, CalendarDays, MapPin, MessageCircle } from 'lucide-react-native';
 import { Colors, Radii, Shadows, Sizes, Spacing } from '../../../src/constants/theme';
 import { SPScreen } from '../../../src/types/navigation';
+import { useAsyncData } from '../../../src/hooks/useAsyncData';
+import { api } from '../../../src/lib/api';
+import { jobStatusMeta, shortDate } from '../../../src/lib/format';
 
 const FILTERS = ['All', 'Active', 'Upcoming', 'Completed'];
 
-const JOBS = [
-  {
-    id: '1', title: 'Kitchen Cleaning', category: 'General Cleaning',
-    location: 'Brgy. Sampaguita, Lipa City', amount: '₱750',
-    date: 'May 13, 2026', time: '1:00 PM',
-    status: 'Active', statusColor: '#22C55E', statusBg: '#F0FDF4',
-    client: 'Alex Chen', clientAvatar: 'AC',
-  },
-  {
-    id: '2', title: 'Garden Maintenance', category: 'Landscaping',
-    location: 'Brgy. Sabang, Lipa City', amount: '₱500',
-    date: 'May 13, 2026', time: '3:00 PM',
-    status: 'Active', statusColor: '#22C55E', statusBg: '#F0FDF4',
-    client: 'Maria Santos', clientAvatar: 'MS',
-  },
-  {
-    id: '3', title: 'House Painting', category: 'Painting',
-    location: 'Brgy. Tambo, Lipa City', amount: '₱3,500',
-    date: 'May 18, 2026', time: '8:00 AM',
-    status: 'Upcoming', statusColor: '#3B82F6', statusBg: '#EFF6FF',
-    client: 'Jose Reyes', clientAvatar: 'JR',
-  },
-  {
-    id: '4', title: 'Deep Cleaning', category: 'Deep Cleaning',
-    location: 'Brgy. Mataas na Lupa', amount: '₱1,200',
-    date: 'May 5, 2026', time: '9:00 AM',
-    status: 'Completed', statusColor: '#6B7280', statusBg: '#F3F4F6',
-    client: 'Rosa Villa', clientAvatar: 'RV',
-  },
-];
+function matchesFilter(status: string, filter: string): boolean {
+  if (filter === 'All') return true;
+  if (filter === 'Active') return status === 'in_progress';
+  if (filter === 'Upcoming') return status === 'assigned';
+  if (filter === 'Completed') return status === 'completed';
+  return true;
+}
 
 interface SPMyJobsScreenProps {
-  onNavigate: (screen: SPScreen) => void;
+  onNavigate: (screen: SPScreen, jobId?: string) => void;
 }
 
 export default function SPMyJobsScreen({ onNavigate }: SPMyJobsScreenProps) {
   const [activeFilter, setActiveFilter] = useState('All');
+  const { data, loading, error } = useAsyncData(() => api.assignedJobs(), []);
+  const jobs = data ?? [];
 
-  const filtered = activeFilter === 'All'
-    ? JOBS
-    : JOBS.filter((j) => j.status === activeFilter);
+  const filtered = jobs.filter((j) => matchesFilter(j.status, activeFilter));
 
   return (
     <View style={styles.screen}>
@@ -75,7 +56,7 @@ export default function SPMyJobsScreen({ onNavigate }: SPMyJobsScreenProps) {
             <Text style={styles.headerTitle}>My Jobs</Text>
           </View>
           <View style={styles.countBadge}>
-            <Text style={styles.countBadgeText}>{JOBS.length} jobs</Text>
+            <Text style={styles.countBadgeText}>{jobs.length} jobs</Text>
           </View>
         </View>
 
@@ -99,62 +80,68 @@ export default function SPMyJobsScreen({ onNavigate }: SPMyJobsScreenProps) {
         contentContainerStyle={styles.bodyContent}
         showsVerticalScrollIndicator={false}
       >
-        {filtered.map((job) => (
-          <TouchableOpacity
-            key={job.id}
-            style={styles.jobCard}
-            onPress={() => onNavigate('Job Detail')}
-            activeOpacity={0.9}
-          >
-            <View style={styles.jobHeader}>
-              <View style={styles.jobClientRow}>
-                <View style={styles.clientAvatar}>
-                  <Text style={styles.clientAvatarText}>{job.clientAvatar}</Text>
-                </View>
-                <View style={styles.clientInfo}>
-                  <Text style={styles.clientName}>{job.client}</Text>
-                  <Text style={styles.jobCategory}>{job.category}</Text>
-                </View>
-                <View style={[styles.statusPill, { backgroundColor: job.statusBg }]}>
-                  <Text style={[styles.statusPillText, { color: job.statusColor }]}>{job.status}</Text>
-                </View>
-              </View>
-            </View>
-            <Text style={styles.jobTitle}>{job.title}</Text>
-            <View style={styles.jobDetails}>
-              <View style={styles.jobDetailRow}>
-                <MapPin size={14} color={Colors.brandTeal} />
-                <Text style={styles.jobDetail}>{job.location}</Text>
-              </View>
-              <View style={styles.jobDetailRow}>
-                <CalendarDays size={14} color={Colors.brandTeal} />
-                <Text style={styles.jobDetail}>{job.date} · {job.time}</Text>
-              </View>
-            </View>
-            <View style={styles.jobFooter}>
-              <Text style={styles.jobAmount}>{job.amount}</Text>
-              <View style={styles.jobActions}>
-                <TouchableOpacity
-                  style={styles.chatBtn}
-                  onPress={() => onNavigate('Chat')}
-                  activeOpacity={0.8}
-                >
-                  <MessageCircle size={18} color={Colors.brandTeal} />
-                </TouchableOpacity>
-                <TouchableOpacity
-                  style={styles.viewBtn}
-                  onPress={() => onNavigate('Job Detail')}
-                  activeOpacity={0.8}
-                >
-                  <View style={styles.viewBtnContent}>
-                    <Text style={styles.viewBtnText}>View Job</Text>
-                    <ArrowRight size={14} color={Colors.white} />
+        {loading && <ActivityIndicator style={{ marginTop: 30 }} color={Colors.brandTeal} />}
+        {!!error && !loading && <Text style={styles.stateText}>{error}</Text>}
+        {!loading && !error && filtered.length === 0 && (
+          <Text style={styles.stateText}>
+            {jobs.length === 0 ? 'No assigned jobs yet.' : 'No jobs in this filter.'}
+          </Text>
+        )}
+        {filtered.map((job) => {
+          const meta = jobStatusMeta(job.status);
+          return (
+            <TouchableOpacity
+              key={job.id}
+              style={styles.jobCard}
+              onPress={() => onNavigate('Job Detail', job.id)}
+              activeOpacity={0.9}
+            >
+              <View style={styles.jobHeader}>
+                <View style={styles.jobClientRow}>
+                  <View style={styles.clientInfo}>
+                    <Text style={styles.jobCategory}>{job.service_categories?.name ?? ''}</Text>
                   </View>
-                </TouchableOpacity>
+                  <View style={[styles.statusPill, { backgroundColor: meta.bg }]}>
+                    <Text style={[styles.statusPillText, { color: meta.color }]}>{meta.label}</Text>
+                  </View>
+                </View>
               </View>
-            </View>
-          </TouchableOpacity>
-        ))}
+              <Text style={styles.jobTitle}>{job.title}</Text>
+              <View style={styles.jobDetails}>
+                <View style={styles.jobDetailRow}>
+                  <MapPin size={14} color={Colors.brandTeal} />
+                  <Text style={styles.jobDetail}>{job.address}</Text>
+                </View>
+                <View style={styles.jobDetailRow}>
+                  <CalendarDays size={14} color={Colors.brandTeal} />
+                  <Text style={styles.jobDetail}>Posted {shortDate(job.posted_at)}</Text>
+                </View>
+              </View>
+              <View style={styles.jobFooter}>
+                <Text style={styles.jobUrgency}>{job.urgency}</Text>
+                <View style={styles.jobActions}>
+                  <TouchableOpacity
+                    style={styles.chatBtn}
+                    onPress={() => onNavigate('Chat', job.id)}
+                    activeOpacity={0.8}
+                  >
+                    <MessageCircle size={18} color={Colors.brandTeal} />
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    style={styles.viewBtn}
+                    onPress={() => onNavigate('Job Detail', job.id)}
+                    activeOpacity={0.8}
+                  >
+                    <View style={styles.viewBtnContent}>
+                      <Text style={styles.viewBtnText}>View Job</Text>
+                      <ArrowRight size={14} color={Colors.white} />
+                    </View>
+                  </TouchableOpacity>
+                </View>
+              </View>
+            </TouchableOpacity>
+          );
+        })}
         <View style={{ height: 20 }} />
       </ScrollView>
     </View>
@@ -196,6 +183,8 @@ const styles = StyleSheet.create({
   jobDetail: { color: Colors.slate, fontSize: 12, fontFamily: 'Inter' },
   jobFooter: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
   jobAmount: { color: Colors.brandTeal, fontSize: 20, fontWeight: '800', fontFamily: 'Inter' },
+  jobUrgency: { color: Colors.brandTeal, fontSize: 13, fontWeight: '700', fontFamily: 'Inter', textTransform: 'capitalize' },
+  stateText: { color: Colors.slate, fontSize: 14, fontFamily: 'Inter', textAlign: 'center', marginTop: 30 },
   jobActions: { flexDirection: 'row', gap: 8, alignItems: 'center' },
   chatBtn: { width: 36, height: 36, borderRadius: 10, backgroundColor: Colors.backgroundAlt, alignItems: 'center', justifyContent: 'center' },
   viewBtn: { backgroundColor: Colors.brandTeal, borderRadius: 12, paddingHorizontal: 14, paddingVertical: 8 },

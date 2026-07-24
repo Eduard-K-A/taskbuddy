@@ -5,23 +5,21 @@
  */
 
 import React from 'react';
-import { ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
-import { ArrowLeft, ArrowDownToLine, ArrowRightLeft, BarChart3, Building2, CreditCard as CardIcon, Sparkles, TreePine, Smartphone } from 'lucide-react-native';
+import { ActivityIndicator, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { ArrowLeft, ArrowDownToLine, ArrowRightLeft, BarChart3, Building2, Sparkles } from 'lucide-react-native';
 import { Colors, Radii, Shadows, Sizes, Spacing } from '../../../src/constants/theme';
-
-const TRANSACTIONS = [
-  { id: '1', title: 'Kitchen Cleaning', type: 'credit', amount: '+₱750', date: 'May 13, 2026', status: 'Credited', icon: Sparkles },
-  { id: '2', title: 'Withdrawal to GCash', type: 'debit', amount: '₱1,000', date: 'May 12, 2026', status: 'Processed', icon: Smartphone },
-  { id: '3', title: 'Garden Maintenance', type: 'credit', amount: '+₱500', date: 'May 10, 2026', status: 'Credited', icon: TreePine },
-  { id: '4', title: 'Deep Cleaning', type: 'credit', amount: '+₱1,200', date: 'May 5, 2026', status: 'Credited', icon: Sparkles },
-  { id: '5', title: 'Platform Fee', type: 'debit', amount: '₱60', date: 'May 5, 2026', status: 'Deducted', icon: Building2 },
-];
+import { useAsyncData } from '../../../src/hooks/useAsyncData';
+import { api } from '../../../src/lib/api';
+import { peso, shortDate } from '../../../src/lib/format';
 
 interface SPWalletScreenProps {
   onBack?: () => void;
 }
 
 export default function SPWalletScreen({ onBack }: SPWalletScreenProps) {
+  const { data, loading, error } = useAsyncData(() => api.wallet(), []);
+  const transactions = data?.transactions ?? [];
+
   return (
     <View style={styles.screen}>
       <View style={styles.hero}>
@@ -36,7 +34,7 @@ export default function SPWalletScreen({ onBack }: SPWalletScreenProps) {
         </View>
         <View style={styles.balanceCard}>
           <Text style={styles.balanceLabel}>Available Balance</Text>
-          <Text style={styles.balanceAmount}>₱12,450.00</Text>
+          <Text style={styles.balanceAmount}>{data ? peso(data.balance) : '—'}</Text>
           <View style={styles.actions}>
             <TouchableOpacity style={styles.actionBtn} activeOpacity={0.8}>
               <ArrowDownToLine size={18} color={Colors.white} />
@@ -56,9 +54,9 @@ export default function SPWalletScreen({ onBack }: SPWalletScreenProps) {
         </View>
         <View style={styles.statsRow}>
           {[
-            { label: 'This Month', value: '+₱2,450', color: '#22C55E' },
-            { label: 'Platform Fees', value: '₱122', color: '#F59E0B' },
-            { label: 'Withdrawn', value: '₱1,000', color: '#94A3B8' },
+            { label: 'Earned', value: peso(data?.total_credited ?? 0), color: '#22C55E' },
+            { label: 'Paid Out', value: peso(data?.total_debited ?? 0), color: '#F59E0B' },
+            { label: 'Pending', value: peso(data?.pending ?? 0), color: '#94A3B8' },
           ].map((s) => (
             <View key={s.label} style={styles.statItem}>
               <Text style={[styles.statValue, { color: s.color }]}>{s.value}</Text>
@@ -70,17 +68,23 @@ export default function SPWalletScreen({ onBack }: SPWalletScreenProps) {
 
       <ScrollView style={styles.body} contentContainerStyle={styles.bodyContent} showsVerticalScrollIndicator={false}>
         <Text style={styles.sectionTitle}>Transaction History</Text>
-        {TRANSACTIONS.map((txn) => {
-          const Icon = txn.icon;
+        {loading && <ActivityIndicator style={{ marginTop: 20 }} color={Colors.brandTeal} />}
+        {!!error && !loading && <Text style={styles.stateText}>{error}</Text>}
+        {!loading && !error && transactions.length === 0 && (
+          <Text style={styles.stateText}>No transactions yet.</Text>
+        )}
+        {transactions.map((txn) => {
+          const Icon = txn.direction === 'credit' ? Sparkles : Building2;
+          const statusLabel = txn.status.charAt(0).toUpperCase() + txn.status.slice(1);
           return (
             <View key={txn.id} style={styles.txnCard}>
               <View style={styles.txnIcon}><Icon size={18} color={Colors.brandTeal} /></View>
               <View style={styles.txnInfo}>
                 <Text style={styles.txnTitle}>{txn.title}</Text>
-                <Text style={styles.txnDate}>{txn.date} · {txn.status}</Text>
+                <Text style={styles.txnDate}>{shortDate(txn.created_at)} · {statusLabel}</Text>
               </View>
-              <Text style={[styles.txnAmount, txn.type === 'credit' ? styles.txnCredit : styles.txnDebit]}>
-                {txn.type === 'debit' ? '-' : ''}{txn.amount}
+              <Text style={[styles.txnAmount, txn.direction === 'credit' ? styles.txnCredit : styles.txnDebit]}>
+                {txn.direction === 'debit' ? '-' : '+'}{peso(txn.amount)}
               </Text>
             </View>
           );
@@ -113,6 +117,7 @@ const styles = StyleSheet.create({
   body: { flex: 1 },
   bodyContent: { paddingHorizontal: Spacing.screenH, paddingTop: 20, paddingBottom: 20 },
   sectionTitle: { color: Colors.brandDark, fontSize: 16, fontWeight: '800', fontFamily: 'Inter', marginBottom: 14 },
+  stateText: { color: Colors.slate, fontSize: 14, fontFamily: 'Inter', textAlign: 'center', marginTop: 20 },
   txnCard: { backgroundColor: Colors.white, borderRadius: Radii.card, padding: 16, marginBottom: 10, flexDirection: 'row', alignItems: 'center', ...Shadows.card },
   txnIcon: { width: 44, height: 44, borderRadius: 14, backgroundColor: Colors.backgroundAlt, alignItems: 'center', justifyContent: 'center', marginRight: 12 },
   txnIconText: { fontSize: 22 },

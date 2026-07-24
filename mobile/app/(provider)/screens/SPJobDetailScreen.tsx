@@ -5,19 +5,53 @@
  * Also covers: "SP - Urgent Posted Job Detail Screen" (id: 46:1084) via isUrgent prop
  */
 
-import React from 'react';
-import { ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
-import { AlertTriangle, ArrowLeft, CalendarDays, Clock3, FileText, Map, MapPin, MessageCircle, MoreVertical, Star, Wrench, Zap } from 'lucide-react-native';
+import React, { useState } from 'react';
+import { ActivityIndicator, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { AlertTriangle, ArrowLeft, AlignLeft, CalendarDays, MapPin, MessageCircle, MoreVertical, TriangleAlert, Wrench } from 'lucide-react-native';
 import { Colors, Radii, Shadows, Sizes, Spacing } from '../../../src/constants/theme';
 import { SPScreen } from '../../../src/types/navigation';
+import { useAuth } from '../../../src/context/AuthContext';
+import { useAsyncData } from '../../../src/hooks/useAsyncData';
+import { api } from '../../../src/lib/api';
+import { jobStatusMeta, shortDate } from '../../../src/lib/format';
 
 interface SPJobDetailScreenProps {
+  jobId: string | null;
   onBack: () => void;
-  onNavigate: (screen: SPScreen) => void;
+  onNavigate: (screen: SPScreen, jobId?: string) => void;
   isUrgent?: boolean;
 }
 
-export default function SPJobDetailScreen({ onBack, onNavigate, isUrgent = false }: SPJobDetailScreenProps) {
+export default function SPJobDetailScreen({ jobId, onBack, onNavigate }: SPJobDetailScreenProps) {
+  const { profile } = useAuth();
+  const { data: job, loading, error, reload } = useAsyncData(() => {
+    if (!jobId) return Promise.reject(new Error('No job selected.'));
+    return api.getJob(jobId);
+  }, [jobId]);
+
+  const [busy, setBusy] = useState(false);
+  const [actionMsg, setActionMsg] = useState<string | null>(null);
+
+  const isAssignedToMe = job?.assigned_provider_id === profile?.id;
+  const canApply = job && ['open', 'recommending'].includes(job.status) && !isAssignedToMe;
+  const canStart = isAssignedToMe && job?.status === 'assigned';
+  const urgent = job?.urgency === 'urgent';
+  const meta = job ? jobStatusMeta(job.status) : null;
+
+  const runAction = async (fn: () => Promise<unknown>, successMsg: string) => {
+    setBusy(true);
+    setActionMsg(null);
+    try {
+      await fn();
+      setActionMsg(successMsg);
+      reload();
+    } catch (e) {
+      setActionMsg(e instanceof Error ? e.message : 'Action failed.');
+    } finally {
+      setBusy(false);
+    }
+  };
+
   return (
     <View style={styles.screen}>
       {/* Header */}
@@ -33,7 +67,7 @@ export default function SPJobDetailScreen({ onBack, onNavigate, isUrgent = false
         </View>
 
         <View style={styles.jobOverview}>
-          {isUrgent && (
+          {urgent && (
             <View style={styles.urgentTag}>
               <View style={styles.urgentTagContent}>
                 <AlertTriangle size={14} color={Colors.error} />
@@ -41,107 +75,79 @@ export default function SPJobDetailScreen({ onBack, onNavigate, isUrgent = false
               </View>
             </View>
           )}
-          <Text style={styles.jobTitle}>{isUrgent ? 'Emergency Pipe Fix' : 'Kitchen Deep Clean'}</Text>
-          <View style={styles.budgetRow}>
-            <Text style={styles.jobBudget}>{isUrgent ? '₱1,200' : '₱850'}</Text>
-            <Text style={styles.budgetLabel}>budget</Text>
-          </View>
+          <Text style={styles.jobTitle}>{job?.title ?? 'Job Details'}</Text>
+          {meta && (
+            <View style={styles.budgetRow}>
+              <Text style={styles.statusLabel}>{meta.label}</Text>
+            </View>
+          )}
         </View>
       </View>
 
-      <ScrollView style={styles.body} contentContainerStyle={styles.bodyContent} showsVerticalScrollIndicator={false}>
-        {/* Client info */}
-        <View style={styles.card}>
-          <Text style={styles.cardTitle}>Posted by</Text>
-          <View style={styles.clientRow}>
-            <View style={styles.clientAvatar}>
-              <Text style={styles.clientAvatarText}>AC</Text>
-            </View>
-            <View style={styles.clientInfo}>
-              <Text style={styles.clientName}>Alex Chen</Text>
-              <View style={styles.clientRatingRow}>
-                <Star size={13} color="#F59E0B" fill="#F59E0B" />
-                <Text style={styles.clientRating}>4.7 · 12 jobs posted</Text>
+      {loading && <ActivityIndicator style={{ marginTop: 40 }} color={Colors.brandTeal} />}
+      {!!error && !loading && <Text style={styles.stateText}>{error}</Text>}
+
+      {job && (
+        <ScrollView style={styles.body} contentContainerStyle={styles.bodyContent} showsVerticalScrollIndicator={false}>
+          {/* Job details */}
+          <View style={styles.card}>
+            <Text style={styles.cardTitle}>Job Details</Text>
+            {[
+              { icon: Wrench, label: 'Service Type', value: job.service_categories?.name ?? '—' },
+              { icon: MapPin, label: 'Location', value: job.address },
+              { icon: TriangleAlert, label: 'Urgency', value: job.urgency },
+              { icon: CalendarDays, label: 'Posted', value: shortDate(job.posted_at) },
+              { icon: AlignLeft, label: 'Description', value: job.description },
+            ].map((item) => (
+              <View key={item.label} style={styles.detailRow}>
+                <item.icon size={18} color={Colors.brandTeal} />
+                <View style={styles.detailBody}>
+                  <Text style={styles.detailLabel}>{item.label}</Text>
+                  <Text style={styles.detailValue}>{item.value}</Text>
+                </View>
               </View>
-            </View>
-            <TouchableOpacity
-              style={styles.chatBtn}
-              onPress={() => onNavigate('Chat')}
-              activeOpacity={0.8}
-            >
+            ))}
+          </View>
+
+          {!!actionMsg && <Text style={styles.actionMsg}>{actionMsg}</Text>}
+
+          {/* Actions */}
+          {isAssignedToMe && (
+            <TouchableOpacity style={styles.chatFullBtn} onPress={() => onNavigate('Chat', job.id)} activeOpacity={0.85}>
               <View style={styles.chatBtnContent}>
-                <MessageCircle size={15} color={Colors.white} />
-                <Text style={styles.chatBtnText}>Chat</Text>
+                <MessageCircle size={16} color={Colors.white} />
+                <Text style={styles.acceptBtnText}>Chat with Client</Text>
               </View>
             </TouchableOpacity>
-          </View>
-        </View>
+          )}
 
-        {/* Job details */}
-        <View style={styles.card}>
-          <Text style={styles.cardTitle}>Job Details</Text>
-          {[
-            { icon: Wrench, label: 'Service Type', value: isUrgent ? 'Plumbing / Emergency' : 'Deep Cleaning' },
-            { icon: MapPin, label: 'Location', value: isUrgent ? 'Brgy. Sabang, Lipa City, Batangas' : 'Brgy. Sampaguita, Lipa City, Batangas' },
-            { icon: CalendarDays, label: 'Date', value: isUrgent ? 'Today — ASAP' : 'May 20, 2026' },
-            { icon: Clock3, label: 'Time', value: isUrgent ? 'Immediately' : '10:00 AM' },
-            { icon: FileText, label: 'Description', value: isUrgent ? 'Burst pipe under the kitchen sink — water flooding. Need urgent plumber.' : '3-bedroom apartment full deep clean. Include bathroom, kitchen, and all rooms.' },
-          ].map((item) => (
-            <View key={item.label} style={styles.detailRow}>
-              <item.icon size={18} color={Colors.brandTeal} />
-              <View style={styles.detailBody}>
-                <Text style={styles.detailLabel}>{item.label}</Text>
-                <Text style={styles.detailValue}>{item.value}</Text>
-              </View>
-            </View>
-          ))}
-        </View>
-
-        {/* Payment */}
-        <View style={styles.card}>
-          <Text style={styles.cardTitle}>Your Earnings</Text>
-          {[
-            { label: 'Job Budget', value: isUrgent ? '₱1,200' : '₱850' },
-            { label: 'Platform Fee (8%)', value: isUrgent ? '-₱96' : '-₱68' },
-          ].map((item) => (
-            <View key={item.label} style={styles.payRow}>
-              <Text style={styles.payLabel}>{item.label}</Text>
-              <Text style={styles.payValue}>{item.value}</Text>
-            </View>
-          ))}
-          <View style={[styles.payRow, styles.payTotalRow]}>
-            <Text style={styles.payTotalLabel}>You receive</Text>
-            <Text style={styles.payTotalValue}>{isUrgent ? '₱1,104' : '₱782'}</Text>
-          </View>
-        </View>
-
-        {/* Map placeholder */}
-        <View style={styles.mapPlaceholder}>
-          <Map size={28} color={Colors.brandTeal} />
-          <Text style={styles.mapText}>View on Map</Text>
-        </View>
-
-        {/* CTA */}
-        {isUrgent ? (
-          <TouchableOpacity style={styles.urgentClaimBtn} activeOpacity={0.85}>
-              <View style={styles.urgentClaimContent}>
-                <Zap size={17} color={Colors.white} fill={Colors.white} />
-                <Text style={styles.urgentClaimText}>Claim Urgent Job — {isUrgent ? '₱1,200' : '₱850'}</Text>
-              </View>
-          </TouchableOpacity>
-        ) : (
-          <View style={styles.acceptRow}>
-            <TouchableOpacity style={styles.declineBtn} activeOpacity={0.85}>
-              <Text style={styles.declineBtnText}>Decline</Text>
+          {canStart && (
+            <TouchableOpacity
+              style={styles.acceptBtnFull}
+              onPress={() => runAction(() => api.startJob(job.id), 'Job started.')}
+              activeOpacity={0.85}
+              disabled={busy}
+            >
+              <Text style={styles.acceptBtnText}>Start Work</Text>
             </TouchableOpacity>
-            <TouchableOpacity style={styles.acceptBtn} activeOpacity={0.85}>
-              <Text style={styles.acceptBtnText}>Accept Job</Text>
-            </TouchableOpacity>
-          </View>
-        )}
+          )}
 
-        <View style={{ height: 20 }} />
-      </ScrollView>
+          {canApply && (
+            <TouchableOpacity
+              style={[styles.acceptBtnFull, urgent && styles.urgentClaimBtn]}
+              onPress={() => runAction(() => api.applyToJob(job.id), 'Application sent!')}
+              activeOpacity={0.85}
+              disabled={busy}
+            >
+              <Text style={styles.acceptBtnText}>
+                {busy ? 'Sending…' : urgent ? 'Claim Urgent Job' : 'Apply for this Job'}
+              </Text>
+            </TouchableOpacity>
+          )}
+
+          <View style={{ height: 20 }} />
+        </ScrollView>
+      )}
     </View>
   );
 }
@@ -163,8 +169,9 @@ const styles = StyleSheet.create({
   urgentTagText: { color: '#EF4444', fontSize: 12, fontWeight: '800', fontFamily: 'Inter' },
   jobTitle: { color: Colors.white, fontSize: 22, fontWeight: '800', fontFamily: 'Inter' },
   budgetRow: { flexDirection: 'row', alignItems: 'baseline', gap: 6 },
-  jobBudget: { color: Colors.brandCyan, fontSize: 28, fontWeight: '800', fontFamily: 'Inter' },
-  budgetLabel: { color: 'rgba(255,255,255,0.6)', fontSize: 13, fontFamily: 'Inter' },
+  statusLabel: { color: Colors.brandCyan, fontSize: 15, fontWeight: '700', fontFamily: 'Inter' },
+  stateText: { color: Colors.slate, fontSize: 14, fontFamily: 'Inter', textAlign: 'center', marginTop: 30, paddingHorizontal: Spacing.screenH },
+  actionMsg: { color: Colors.brandTeal, fontSize: 13, fontFamily: 'Inter', textAlign: 'center', marginBottom: 12 },
   body: { flex: 1 },
   bodyContent: { paddingHorizontal: Spacing.screenH, paddingTop: 20, paddingBottom: 20 },
   card: { backgroundColor: Colors.white, borderRadius: Radii.card, padding: 18, marginBottom: 14, ...Shadows.card },
@@ -191,12 +198,8 @@ const styles = StyleSheet.create({
   payTotalValue: { color: '#22C55E', fontSize: 20, fontWeight: '800', fontFamily: 'Inter' },
   mapPlaceholder: { backgroundColor: Colors.white, borderRadius: Radii.card, height: 90, alignItems: 'center', justifyContent: 'center', marginBottom: 14, ...Shadows.card, gap: 6, flexDirection: 'row' },
   mapText: { color: Colors.brandTeal, fontSize: 15, fontWeight: '700', fontFamily: 'Inter' },
-  acceptRow: { flexDirection: 'row', gap: 12 },
-  declineBtn: { flex: 1, borderWidth: 1, borderColor: Colors.muted, borderRadius: 24, padding: 15, alignItems: 'center' },
-  declineBtnText: { color: Colors.muted, fontSize: 15, fontWeight: '700', fontFamily: 'Inter' },
-  acceptBtn: { flex: 2, backgroundColor: Colors.brandTeal, borderRadius: 24, padding: 15, alignItems: 'center', shadowColor: Colors.brandTeal, shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.3, shadowRadius: 10, elevation: 5 },
+  acceptBtnFull: { backgroundColor: Colors.brandTeal, borderRadius: 24, padding: 15, alignItems: 'center', marginBottom: 10, shadowColor: Colors.brandTeal, shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.3, shadowRadius: 10, elevation: 5 },
   acceptBtnText: { color: Colors.white, fontSize: 15, fontWeight: '700', fontFamily: 'Inter' },
-  urgentClaimBtn: { backgroundColor: '#EF4444', borderRadius: 24, padding: 15, alignItems: 'center', shadowColor: '#EF4444', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.3, shadowRadius: 10, elevation: 5 },
-  urgentClaimContent: { flexDirection: 'row', alignItems: 'center', gap: 7 },
-  urgentClaimText: { color: Colors.white, fontSize: 15, fontWeight: '800', fontFamily: 'Inter' },
+  chatFullBtn: { backgroundColor: Colors.brandTeal, borderRadius: 24, padding: 15, alignItems: 'center', marginBottom: 10 },
+  urgentClaimBtn: { backgroundColor: '#EF4444', shadowColor: '#EF4444' },
 });

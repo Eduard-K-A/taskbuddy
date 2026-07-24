@@ -10,8 +10,9 @@
  * - 5-tab bottom nav (handled by parent)
  */
 
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import {
+  ActivityIndicator,
   ScrollView,
   StyleSheet,
   Text,
@@ -20,71 +21,73 @@ import {
 } from 'react-native';
 import {
   Bell,
-  BriefcaseBusiness,
   CheckCircle2,
   MapPin,
   Star,
   Clock3,
-  UserRound,
   CircleAlert,
   Wallet,
   RefreshCw,
 } from 'lucide-react-native';
 import { Colors, Radii, Shadows, Sizes, Spacing } from '../../../src/constants/theme';
 import { SPScreen } from '../../../src/types/navigation';
-
-const AVAILABLE_JOBS = [
-  {
-    id: '1',
-    title: 'Kitchen Deep Clean',
-    category: 'Deep Cleaning',
-    location: 'Brgy. Sampaguita, Lipa City',
-    budget: '₱850',
-    time: '10:00 AM, May 20',
-    postedBy: 'Alex C.',
-    distance: '1.2 km',
-    isUrgent: false,
-    tags: ['Home', '3BR'],
-  },
-  {
-    id: '2',
-    title: 'Emergency Pipe Fix',
-    category: 'Plumbing',
-    location: 'Brgy. Sabang, Lipa City',
-    budget: '₱1,200',
-    time: 'ASAP',
-    postedBy: 'Maria S.',
-    distance: '2.5 km',
-    isUrgent: true,
-    tags: ['Urgent', 'Emergency'],
-  },
-  {
-    id: '3',
-    title: 'House Interior Paint',
-    category: 'Painting',
-    location: 'Brgy. Mataas na Lupa',
-    budget: '₱3,500',
-    time: 'May 22, Flexible',
-    postedBy: 'Jose R.',
-    distance: '3.8 km',
-    isUrgent: false,
-    tags: ['Interior', '4 days'],
-  },
-];
+import { useAuth } from '../../../src/context/AuthContext';
+import { useAsyncData } from '../../../src/hooks/useAsyncData';
+import { api } from '../../../src/lib/api';
+import { initials, peso, shortDate } from '../../../src/lib/format';
 
 interface SPHomeScreenProps {
-  onNavigate: (screen: SPScreen) => void;
+  onNavigate: (screen: SPScreen, jobId?: string) => void;
 }
 
 export default function SPHomeScreen({ onNavigate }: SPHomeScreenProps) {
+  const { profile, providerProfile } = useAuth();
+  const { data } = useAsyncData(async () => {
+    const [wallet, jobs, assigned] = await Promise.all([
+      api.wallet(),
+      api.browseJobs({ limit: 20 }),
+      api.assignedJobs(),
+    ]);
+    return { wallet, jobs, assigned };
+  }, []);
+
+  const [available, setAvailable] = useState(providerProfile?.is_available ?? true);
+  const [togglingAvail, setTogglingAvail] = useState(false);
+  useEffect(() => {
+    if (providerProfile) setAvailable(providerProfile.is_available);
+  }, [providerProfile]);
+
+  const toggleAvailability = async () => {
+    if (togglingAvail) return;
+    const next = !available;
+    setAvailable(next);
+    setTogglingAvail(true);
+    try {
+      await api.setAvailability(next);
+    } catch {
+      setAvailable(!next); // revert on failure
+    } finally {
+      setTogglingAvail(false);
+    }
+  };
+
+  const name = profile?.full_name ?? '';
+  const rating = providerProfile?.cached_avg_rating;
+  const jobsDone = providerProfile?.cached_completed_jobs ?? 0;
+  const activeCount = (data?.assigned ?? []).filter((j) =>
+    ['assigned', 'in_progress'].includes(j.status),
+  ).length;
+  const availableJobs = data?.jobs ?? [];
+  const location = profile?.city || 'Set your location';
+
   return (
     <View style={styles.screen}>
       {/* Hero Header */}
       <View style={styles.hero}>
         <View style={styles.heroTopRow}>
           <View>
-            <Text style={styles.greeting}>Good morning!</Text>
-            <Text style={styles.providerName}>Juan dela Cruz</Text>
+            <Text style={styles.greeting}>Welcome back!</Text>
+            <Text style={styles.providerName}>{name || 'Provider'}</Text>
           </View>
           <View style={styles.heroActions}>
             <TouchableOpacity
@@ -99,7 +102,7 @@ export default function SPHomeScreen({ onNavigate }: SPHomeScreenProps) {
               onPress={() => onNavigate('Profile')}
               activeOpacity={0.8}
             >
-              <Text style={styles.avatarText}>JD</Text>
+              <Text style={styles.avatarText}>{initials(name)}</Text>
             </TouchableOpacity>
           </View>
         </View>
@@ -108,8 +111,8 @@ export default function SPHomeScreen({ onNavigate }: SPHomeScreenProps) {
         <View style={styles.earningsCard}>
           <View style={styles.earningsRow}>
             <View>
-              <Text style={styles.earningsLabel}>Total Earnings</Text>
-              <Text style={styles.earningsAmount}>₱12,450</Text>
+              <Text style={styles.earningsLabel}>Wallet Balance</Text>
+              <Text style={styles.earningsAmount}>{data ? peso(data.wallet.balance) : '—'}</Text>
             </View>
             <TouchableOpacity
               style={styles.walletBtn}
@@ -125,31 +128,32 @@ export default function SPHomeScreen({ onNavigate }: SPHomeScreenProps) {
 
           {/* Stats */}
           <View style={styles.statsRow}>
-            {[
-              { label: 'Jobs Done', value: '47', icon: CheckCircle2 },
-              { label: 'Rating', value: '4.8', icon: Star },
-              { label: 'Active', value: '2', icon: RefreshCw },
-            ].map((s) => {
-              const Icon = s.icon;
-              return (
-                <View key={s.label} style={styles.statItem}>
-                  <Icon size={18} color={Colors.white} />
-                  <Text style={styles.statValue}>{s.value}</Text>
-                  <Text style={styles.statLabel}>{s.label}</Text>
-                </View>
-              );
-            })}
+            <View style={styles.statItem}>
+              <CheckCircle2 size={18} color={Colors.white} />
+              <Text style={styles.statValue}>{jobsDone}</Text>
+              <Text style={styles.statLabel}>Jobs Done</Text>
+            </View>
+            <View style={styles.statItem}>
+              <Star size={18} color={Colors.white} />
+              <Text style={styles.statValue}>{rating != null ? Number(rating).toFixed(1) : 'New'}</Text>
+              <Text style={styles.statLabel}>Rating</Text>
+            </View>
+            <View style={styles.statItem}>
+              <RefreshCw size={18} color={Colors.white} />
+              <Text style={styles.statValue}>{activeCount}</Text>
+              <Text style={styles.statLabel}>Active</Text>
+            </View>
           </View>
         </View>
 
-        {/* Status / availability toggle */}
-        <View style={styles.statusBar}>
-          <View style={styles.statusDot} />
-          <Text style={styles.statusText}>Available for Jobs</Text>
-          <View style={styles.statusToggleTrack}>
-            <View style={styles.statusToggleThumb} />
+        {/* Status / availability toggle (real) */}
+        <TouchableOpacity style={styles.statusBar} onPress={toggleAvailability} activeOpacity={0.8} disabled={togglingAvail}>
+          <View style={[styles.statusDot, { backgroundColor: available ? '#22C55E' : Colors.muted }]} />
+          <Text style={styles.statusText}>{available ? 'Available for Jobs' : 'Not Available'}</Text>
+          <View style={[styles.statusToggleTrack, !available && styles.statusToggleTrackOff]}>
+            <View style={[styles.statusToggleThumb, !available && styles.statusToggleThumbOff]} />
           </View>
-        </View>
+        </TouchableOpacity>
       </View>
 
       {/* Body */}
@@ -158,81 +162,68 @@ export default function SPHomeScreen({ onNavigate }: SPHomeScreenProps) {
         contentContainerStyle={styles.bodyContent}
         showsVerticalScrollIndicator={false}
       >
-        {/* Search radius */}
+        {/* Location */}
         <View style={styles.locationRow}>
           <View style={styles.locationTextRow}>
             <MapPin size={14} color={Colors.brandTeal} />
-            <Text style={styles.locationText}>Lipa City, Batangas</Text>
+            <Text style={styles.locationText}>{location}</Text>
           </View>
-          <TouchableOpacity activeOpacity={0.8}>
-            <Text style={styles.radiusText}>5 km radius ›</Text>
-          </TouchableOpacity>
         </View>
 
         {/* Available jobs */}
         <View style={styles.sectionHeaderRow}>
           <Text style={styles.sectionTitle}>Available Jobs</Text>
           <TouchableOpacity onPress={() => onNavigate('My Jobs')} activeOpacity={0.8}>
-            <Text style={styles.seeAll}>See all</Text>
+            <Text style={styles.seeAll}>My Jobs</Text>
           </TouchableOpacity>
         </View>
 
-        {AVAILABLE_JOBS.map((job) => (
-          <TouchableOpacity
-            key={job.id}
-            style={styles.jobCard}
-            onPress={() => onNavigate(job.isUrgent ? 'Urgent Job' : 'Job Detail')}
-            activeOpacity={0.9}
-          >
-            {job.isUrgent && (
-              <View style={styles.urgentBanner}>
-                <CircleAlert size={14} color={Colors.error} />
-                <Text style={styles.urgentBannerText}>URGENT JOB</Text>
-              </View>
-            )}
-            <View style={styles.jobCardHeader}>
-              <Text style={styles.jobTitle}>{job.title}</Text>
-              <Text style={styles.jobBudget}>{job.budget}</Text>
-            </View>
-            <Text style={styles.jobCategory}>{job.category}</Text>
-            <View style={styles.jobInfoRow}>
-              <View style={styles.metaItem}>
-                <MapPin size={14} color={Colors.brandTeal} />
-                <Text style={styles.jobInfo}>{job.location}</Text>
-              </View>
-              <View style={styles.metaItem}>
-                <Clock3 size={14} color={Colors.brandTeal} />
-                <Text style={styles.jobInfo}>{job.time}</Text>
-              </View>
-            </View>
-            <View style={styles.jobMetaRow}>
-              <View style={styles.metaItem}>
-                <UserRound size={14} color={Colors.brandTeal} />
-                <Text style={styles.jobPoster}>{job.postedBy}</Text>
-              </View>
-              <View style={styles.metaItem}>
-                <BriefcaseBusiness size={14} color={Colors.brandTeal} />
-                <Text style={styles.jobDistance}>{job.distance}</Text>
-              </View>
-            </View>
-            <View style={styles.tagsRow}>
-              {job.tags.map((tag) => (
-                <View key={tag} style={[styles.tag, job.isUrgent && styles.tagUrgent]}>
-                  <Text style={[styles.tagText, job.isUrgent && styles.tagTextUrgent]}>{tag}</Text>
-                </View>
-              ))}
-            </View>
+        {!data && <ActivityIndicator style={{ marginTop: 20 }} color={Colors.brandTeal} />}
+        {data && availableJobs.length === 0 && (
+          <Text style={styles.emptyText}>No open jobs right now. Check back soon.</Text>
+        )}
+
+        {availableJobs.map((job) => {
+          const isUrgent = job.urgency === 'urgent';
+          return (
             <TouchableOpacity
-              style={[styles.claimBtn, job.isUrgent && styles.claimBtnUrgent]}
-              onPress={() => onNavigate(job.isUrgent ? 'Urgent Job' : 'Job Detail')}
-              activeOpacity={0.85}
+              key={job.id}
+              style={styles.jobCard}
+              onPress={() => onNavigate('Job Detail', job.id)}
+              activeOpacity={0.9}
             >
-              <Text style={styles.claimBtnText}>
-                {job.isUrgent ? `Claim Urgent Job — ${job.budget}` : 'View Details'}
-              </Text>
+              {isUrgent && (
+                <View style={styles.urgentBanner}>
+                  <CircleAlert size={14} color={Colors.error} />
+                  <Text style={styles.urgentBannerText}>URGENT JOB</Text>
+                </View>
+              )}
+              <View style={styles.jobCardHeader}>
+                <Text style={styles.jobTitle}>{job.title}</Text>
+              </View>
+              <Text style={styles.jobCategory}>{job.service_categories?.name ?? ''}</Text>
+              <View style={styles.jobInfoRow}>
+                <View style={styles.metaItem}>
+                  <MapPin size={14} color={Colors.brandTeal} />
+                  <Text style={styles.jobInfo}>{job.address}</Text>
+                </View>
+                <View style={styles.metaItem}>
+                  <Clock3 size={14} color={Colors.brandTeal} />
+                  <Text style={styles.jobInfo}>Posted {shortDate(job.posted_at)}</Text>
+                </View>
+              </View>
+              <TouchableOpacity
+                style={[styles.claimBtn, isUrgent && styles.claimBtnUrgent]}
+                onPress={() => onNavigate('Job Detail', job.id)}
+                activeOpacity={0.85}
+              >
+                <Text style={styles.claimBtnText}>
+                  {isUrgent ? 'View Urgent Job' : 'View Details'}
+                </Text>
+              </TouchableOpacity>
             </TouchableOpacity>
-          </TouchableOpacity>
-        ))}
+          );
+        })}
 
         <View style={{ height: 20 }} />
       </ScrollView>
@@ -299,9 +290,12 @@ const styles = StyleSheet.create({
     width: 44, height: 26, borderRadius: 13, backgroundColor: Colors.brandTeal,
     justifyContent: 'center', paddingHorizontal: 2,
   },
+  statusToggleTrackOff: { backgroundColor: 'rgba(255,255,255,0.2)' },
   statusToggleThumb: {
     width: 22, height: 22, borderRadius: 11, backgroundColor: Colors.white, alignSelf: 'flex-end',
   },
+  statusToggleThumbOff: { alignSelf: 'flex-start' },
+  emptyText: { color: Colors.slate, fontSize: 14, fontFamily: 'Inter', textAlign: 'center', paddingVertical: 16 },
 
   body: { flex: 1 },
   bodyContent: { paddingHorizontal: Spacing.screenH, paddingTop: 20, paddingBottom: 20 },

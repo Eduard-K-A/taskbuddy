@@ -14,8 +14,10 @@ import { ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-nati
 import { BadgeCheck, CreditCard, Edit3, LogOut, Mail, MapPin, Phone, Bell, CalendarDays, Wallet as WalletIcon, ChevronRight } from 'lucide-react-native';
 import { Colors, Radii, Shadows, Sizes, Spacing } from '../../../src/constants/theme';
 import { SPScreen } from '../../../src/types/navigation';
-
-const SKILLS = ['General Cleaning', 'Deep Cleaning', 'Painting', 'Landscaping'];
+import { useAuth } from '../../../src/context/AuthContext';
+import { useAsyncData } from '../../../src/hooks/useAsyncData';
+import { api } from '../../../src/lib/api';
+import { initials, monthYear, peso } from '../../../src/lib/format';
 
 interface SPProfileScreenProps {
   onNavigate: (screen: SPScreen) => void;
@@ -23,6 +25,17 @@ interface SPProfileScreenProps {
 }
 
 export default function SPProfileScreen({ onNavigate, onLogout }: SPProfileScreenProps) {
+  const { profile, providerProfile } = useAuth();
+  const wallet = useAsyncData(() => api.wallet(), []);
+
+  const name = profile?.full_name ?? '';
+  const rating = providerProfile?.cached_avg_rating;
+  const jobsDone = providerProfile?.cached_completed_jobs ?? 0;
+  const category = providerProfile?.service_categories?.name;
+  const location =
+    [profile?.city, profile?.address].filter(Boolean).join(', ') || '—';
+  const ratingLabel = rating != null ? Number(rating).toFixed(1) : 'New';
+
   return (
     <View style={styles.screen}>
       <View style={styles.hero}>
@@ -42,44 +55,53 @@ export default function SPProfileScreen({ onNavigate, onLogout }: SPProfileScree
             <View style={styles.verifiedBadge}><BadgeCheck size={12} color={Colors.white} /></View>
           </View>
           <View>
-            <Text style={styles.providerName}>Juan dela Cruz</Text>
-            <Text style={styles.providerTagline}>⭐ 4.8 · 47 jobs · Service Provider</Text>
+            <Text style={styles.providerName}>{name || 'Your Profile'}</Text>
+            <Text style={styles.providerTagline}>
+              ⭐ {ratingLabel} · {jobsDone} jobs · Service Provider
+            </Text>
           </View>
         </View>
 
         <View style={styles.statsRow}>
-          {[
-            { label: 'Earnings', value: '₱12,450' },
-            { label: 'Jobs Done', value: '47' },
-            { label: 'Rating', value: '4.8 ⭐' },
-          ].map((s) => (
-            <View key={s.label} style={styles.statCard}>
-              <Text style={styles.statValue}>{s.value}</Text>
-              <Text style={styles.statLabel}>{s.label}</Text>
-            </View>
-          ))}
+          <View style={styles.statCard}>
+            <Text style={styles.statValue}>
+              {wallet.data ? peso(wallet.data.balance) : '—'}
+            </Text>
+            <Text style={styles.statLabel}>Balance</Text>
+          </View>
+          <View style={styles.statCard}>
+            <Text style={styles.statValue}>{jobsDone}</Text>
+            <Text style={styles.statLabel}>Jobs Done</Text>
+          </View>
+          <View style={styles.statCard}>
+            <Text style={styles.statValue}>{ratingLabel}</Text>
+            <Text style={styles.statLabel}>Rating</Text>
+          </View>
         </View>
       </View>
 
       <ScrollView style={styles.body} contentContainerStyle={styles.bodyContent} showsVerticalScrollIndicator={false}>
-        {/* Skills */}
-        <View style={styles.card}>
-          <Text style={styles.cardTitle}>Skills</Text>
-          <View style={styles.skillsRow}>
-            {SKILLS.map((skill) => (
-              <View key={skill} style={styles.skillChip}><Text style={styles.skillChipText}>{skill}</Text></View>
-            ))}
+        {/* Service category */}
+        {!!category && (
+          <View style={styles.card}>
+            <Text style={styles.cardTitle}>Service</Text>
+            <View style={styles.skillsRow}>
+              <View style={styles.skillChip}><Text style={styles.skillChipText}>{category}</Text></View>
+            </View>
+            {!!providerProfile?.bio && (
+              <Text style={styles.bioText}>{providerProfile.bio}</Text>
+            )}
           </View>
-        </View>
+        )}
 
         {/* Info */}
         <View style={styles.card}>
           <Text style={styles.cardTitle}>Account Info</Text>
           {[
-            { label: 'Email', value: 'juan.delacruz@gmail.com' },
-            { label: 'Phone', value: '+639123456789' },
-            { label: 'Location', value: 'Lipa City, Batangas' },
-            { label: 'Member Since', value: 'January 2026' },
+            { label: 'Email', value: profile?.email ?? '—' },
+            { label: 'Phone', value: profile?.phone ?? '—' },
+            { label: 'Location', value: location },
+            { label: 'Member Since', value: monthYear(profile?.created_at) || '—' },
           ].map((item) => (
             <View key={item.label} style={styles.infoRow}>
               <Text style={styles.infoLabel}>{item.label}</Text>
@@ -132,6 +154,7 @@ const styles = StyleSheet.create({
   heroTopRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingTop: 12, marginBottom: 16 },
   heroTitle: { color: Colors.white, fontSize: 20, fontWeight: '700', fontFamily: 'Inter' },
   editBtn: { backgroundColor: 'rgba(255,255,255,0.15)', borderRadius: 14, paddingHorizontal: 14, paddingVertical: 8 },
+  editBtnContent: { flexDirection: 'row', alignItems: 'center', gap: 6 },
   editBtnText: { color: Colors.white, fontSize: 13, fontWeight: '600', fontFamily: 'Inter' },
   avatarSection: { flexDirection: 'row', alignItems: 'center', gap: 14, marginBottom: 20 },
   avatarWrap: { position: 'relative' },
@@ -152,14 +175,17 @@ const styles = StyleSheet.create({
   skillsRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
   skillChip: { backgroundColor: Colors.backgroundAlt, borderRadius: 999, paddingHorizontal: 14, paddingVertical: 7 },
   skillChipText: { color: Colors.brandTeal, fontSize: 13, fontWeight: '600', fontFamily: 'Inter' },
+  bioText: { color: Colors.slate, fontSize: 13, fontFamily: 'Inter', lineHeight: 20, marginTop: 12 },
   infoRow: { flexDirection: 'row', justifyContent: 'space-between', paddingVertical: 10, borderBottomWidth: 1, borderBottomColor: 'rgba(144,153,184,0.15)' },
   infoLabel: { color: Colors.slate, fontSize: 13, fontFamily: 'Inter' },
   infoValue: { color: Colors.brandDark, fontSize: 13, fontWeight: '600', fontFamily: 'Inter', maxWidth: '55%', textAlign: 'right' },
   menuItem: { flexDirection: 'row', alignItems: 'center', paddingVertical: 14, gap: 12 },
   menuItemBorder: { borderBottomWidth: 1, borderBottomColor: 'rgba(144,153,184,0.15)' },
   menuIcon: { fontSize: 20, width: 28 },
+  menuIconBox: { width: 34, height: 34, borderRadius: 12, backgroundColor: Colors.backgroundAlt, alignItems: 'center', justifyContent: 'center' },
   menuLabel: { flex: 1, color: Colors.brandDark, fontSize: 14, fontWeight: '600', fontFamily: 'Inter' },
   menuArrow: { color: Colors.muted, fontSize: 20 },
   logoutBtn: { borderWidth: 1, borderColor: Colors.error, borderRadius: 24, padding: 15, alignItems: 'center' },
+  logoutContent: { flexDirection: 'row', alignItems: 'center', gap: 8 },
   logoutText: { color: Colors.error, fontSize: 15, fontWeight: '700', fontFamily: 'Inter' },
 });

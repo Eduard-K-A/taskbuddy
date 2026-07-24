@@ -4,50 +4,80 @@
  * Figma Source: "SP - Chat Interface" (id: 240:801)
  */
 
-import React, { useState, useRef } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 import {
-  FlatList, KeyboardAvoidingView, Platform,
+  ActivityIndicator, FlatList, KeyboardAvoidingView, Platform,
   StyleSheet, Text, TextInput, TouchableOpacity, View,
 } from 'react-native';
 import { ArrowLeft, Paperclip, Phone, Sparkles, SendHorizontal } from 'lucide-react-native';
 import { Colors, Radii, Sizes, Spacing } from '../../../src/constants/theme';
+import { useAuth } from '../../../src/context/AuthContext';
+import { api, type Conversation, type Message } from '../../../src/lib/api';
+import { initials, shortDate, timeOfDay } from '../../../src/lib/format';
 
-interface Message { id: string; text: string; sent: boolean; time: string; }
+interface SPChatScreenProps { jobId: string | null; onBack: () => void; onViewJob: () => void; }
 
-const INITIAL_MESSAGES: Message[] = [
-  { id: '1', text: 'Hi Juan! Are you confirmed for the 10AM slot tomorrow?', sent: false, time: '9:30 AM' },
-  { id: '2', text: 'Yes, I\'ll be there. Just confirming the address.', sent: true, time: '9:31 AM' },
-  { id: '3', text: 'It\'s 23 Mabini St., Brgy. Sampaguita, Lipa City. Gate code is 1234.', sent: false, time: '9:32 AM' },
-  { id: '4', text: 'Got it, thank you! I\'ll bring all my cleaning supplies.', sent: true, time: '9:33 AM' },
-  { id: '5', text: 'Perfect. See you tomorrow!', sent: false, time: '9:34 AM' },
-];
-
-interface SPChatScreenProps { onBack: () => void; onViewJob: () => void; }
-
-export default function SPChatScreen({ onBack, onViewJob }: SPChatScreenProps) {
-  const [messages, setMessages] = useState<Message[]>(INITIAL_MESSAGES);
+export default function SPChatScreen({ jobId, onBack, onViewJob }: SPChatScreenProps) {
+  const { profile } = useAuth();
+  const [conversation, setConversation] = useState<Conversation | null>(null);
+  const [messages, setMessages] = useState<Message[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [text, setText] = useState('');
+  const [sending, setSending] = useState(false);
   const listRef = useRef<FlatList>(null);
 
-  const handleSend = () => {
-    if (!text.trim()) return;
-    setMessages((p) => [...p, {
-      id: String(Date.now()), text: text.trim(), sent: true,
-      time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-    }]);
-    setText('');
-    setTimeout(() => listRef.current?.scrollToEnd({ animated: true }), 100);
+  useEffect(() => {
+    let active = true;
+    (async () => {
+      setLoading(true);
+      setError(null);
+      try {
+        if (!jobId) throw new Error('No conversation selected.');
+        const convo = await api.openConversation(jobId);
+        const msgs = await api.messages(convo.id);
+        if (active) {
+          setConversation(convo);
+          setMessages(msgs);
+        }
+        api.markConversationRead(convo.id).catch(() => {});
+      } catch (e) {
+        if (active) setError(e instanceof Error ? e.message : 'Could not load chat.');
+      } finally {
+        if (active) setLoading(false);
+      }
+    })();
+    return () => { active = false; };
+  }, [jobId]);
+
+  const handleSend = async () => {
+    const body = text.trim();
+    if (!body || !conversation || sending) return;
+    setSending(true);
+    try {
+      const msg = await api.sendMessage(conversation.id, body);
+      setMessages((p) => [...p, msg]);
+      setText('');
+      setTimeout(() => listRef.current?.scrollToEnd({ animated: true }), 100);
+    } catch {
+      // keep text for retry
+    } finally {
+      setSending(false);
+    }
   };
 
-  const renderBubble = ({ item }: { item: Message }) => (
-    <View style={[styles.row, item.sent && styles.rowSent]}>
-      {!item.sent && <View style={styles.avatar}><Text style={styles.avatarText}>AC</Text></View>}
-      <View style={[styles.bubble, item.sent ? styles.bubbleSent : styles.bubbleReceived]}>
-        <Text style={[styles.bubbleText, item.sent && styles.bubbleTextSent]}>{item.text}</Text>
-        <Text style={[styles.bubbleTime, item.sent && styles.bubbleTimeSent]}>{item.time}</Text>
+  const renderBubble = ({ item }: { item: Message }) => {
+    const sent = item.sender_id === profile?.id;
+    return (
+      <View style={[styles.row, sent && styles.rowSent]}>
+        {!sent && <View style={styles.avatar}><Text style={styles.avatarText}>{initials(conversation?.counterpart_name)}</Text></View>}
+        <View style={[styles.bubble, sent ? styles.bubbleSent : styles.bubbleReceived]}>
+          <Text style={[styles.bubbleText, sent && styles.bubbleTextSent]}>{item.body}</Text>
+          <Text style={[styles.bubbleTime, sent && styles.bubbleTimeSent]}>{timeOfDay(item.created_at)}</Text>
+        </View>
       </View>
-    </View>
-  );
+    );
+  };
 
   return (
     <View style={styles.screen}>
@@ -55,12 +85,11 @@ export default function SPChatScreen({ onBack, onViewJob }: SPChatScreenProps) {
         <TouchableOpacity style={styles.backBtn} onPress={onBack} activeOpacity={0.8}>
           <ArrowLeft size={18} color={Colors.white} />
         </TouchableOpacity>
-        <View style={styles.clientAvatar}><Text style={styles.clientAvatarText}>AC</Text></View>
+        <View style={styles.clientAvatar}><Text style={styles.clientAvatarText}>{initials(conversation?.counterpart_name)}</Text></View>
         <View style={styles.clientInfo}>
-          <Text style={styles.clientName}>Alex Chen</Text>
+          <Text style={styles.clientName}>{conversation?.counterpart_name ?? 'Chat'}</Text>
           <View style={styles.onlineRow}>
-            <View style={styles.onlineDot} />
-            <Text style={styles.onlineText}>Online</Text>
+            <Text style={styles.onlineText}>{conversation?.job_status ?? ''}</Text>
           </View>
         </View>
         <TouchableOpacity style={styles.callBtn} activeOpacity={0.8}>
@@ -71,11 +100,19 @@ export default function SPChatScreen({ onBack, onViewJob }: SPChatScreenProps) {
       {/* Job ref */}
       <View style={styles.jobRef}>
         <Sparkles size={18} color={Colors.brandTeal} />
-        <Text style={styles.jobRefText}>Kitchen Deep Clean · May 20, 2026</Text>
+        <Text style={styles.jobRefText}>
+          {conversation?.job_title ?? 'Job'}
+          {conversation ? ` · ${shortDate(conversation.created_at)}` : ''}
+        </Text>
         <TouchableOpacity onPress={onViewJob} activeOpacity={0.8}><Text style={styles.jobRefLink}>View Job</Text></TouchableOpacity>
       </View>
 
       <KeyboardAvoidingView style={styles.flex} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
+        {loading && <ActivityIndicator style={{ marginTop: 30 }} color={Colors.brandTeal} />}
+        {!!error && !loading && <Text style={styles.stateText}>{error}</Text>}
+        {!loading && !error && messages.length === 0 && (
+          <Text style={styles.stateText}>No messages yet. Say hello 👋</Text>
+        )}
         <FlatList
           ref={listRef}
           data={messages}
@@ -137,6 +174,7 @@ const styles = StyleSheet.create({
   jobRefText: { flex: 1, color: Colors.brandDark, fontSize: 13, fontWeight: '600', fontFamily: 'Inter' },
   jobRefLink: { color: Colors.brandTeal, fontSize: 13, fontWeight: '700', fontFamily: 'Inter' },
   chatContent: { paddingHorizontal: Spacing.screenH, paddingVertical: 16, gap: 10 },
+  stateText: { color: Colors.slate, fontSize: 13, fontFamily: 'Inter', textAlign: 'center', marginTop: 20 },
   row: { flexDirection: 'row', alignItems: 'flex-end', gap: 8, marginBottom: 8 },
   rowSent: { flexDirection: 'row-reverse' },
   avatar: { width: 32, height: 32, borderRadius: 10, backgroundColor: Colors.brandCyan, alignItems: 'center', justifyContent: 'center' },

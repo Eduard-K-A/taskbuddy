@@ -4,31 +4,56 @@
  * Figma Source: "SP - Notifications" (id: 46:1012)
  */
 
-import React, { useState } from 'react';
-import { ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
-import { AlertTriangle, BriefcaseBusiness, CircleCheckBig, MessageCircle, Star } from 'lucide-react-native';
+import React from 'react';
+import { ActivityIndicator, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { AlertTriangle, BriefcaseBusiness, CircleCheckBig } from 'lucide-react-native';
 import { Colors, Radii, Shadows, Sizes, Spacing } from '../../../src/constants/theme';
+import { useAsyncData } from '../../../src/hooks/useAsyncData';
+import { api } from '../../../src/lib/api';
+import { dateBucket, timeAgo } from '../../../src/lib/format';
 
-const NOTIFICATIONS = [
-  { id: '1', icon: '🆕', iconBg: '#EFF6FF', title: 'New Job Available', message: 'A Deep Cleaning job was posted near you — ₱1,200. Check it out now!', time: '5 mins ago', read: false, date: 'Today' },
-  { id: '2', icon: '✅', iconBg: '#F0FDF4', title: 'Payment Received', message: '₱750 has been credited to your wallet for Kitchen Cleaning.', time: '1 hour ago', read: false, date: 'Today' },
-  { id: '3', icon: '⭐', iconBg: '#FFFBEB', title: 'New Review', message: 'Alex Chen left you a 5-star review: "Excellent work, very thorough!"', time: '3 hours ago', read: true, date: 'Today' },
-  { id: '4', icon: '🚨', iconBg: '#FFF5F5', title: 'Urgent Job Posted', message: 'Emergency plumbing repair — ₱1,200 in Brgy. Sabang. Claim now!', time: 'Yesterday', read: true, date: 'Yesterday' },
-  { id: '5', icon: '💬', iconBg: '#F5F3FF', title: 'New Message', message: 'Maria Santos: "Can you start an hour earlier?"', time: 'Yesterday', read: true, date: 'Yesterday' },
-];
+interface NotificationRow {
+  id: string;
+  type: string;
+  title: string;
+  body: string;
+  read_at: string | null;
+  created_at: string;
+}
+
+const ICON_BY_TYPE: Record<string, { icon: typeof BriefcaseBusiness; bg: string }> = {
+  recommendation_invite: { icon: BriefcaseBusiness, bg: '#EFF6FF' },
+  application_update: { icon: CircleCheckBig, bg: '#F0FDF4' },
+  job_update: { icon: AlertTriangle, bg: '#FFF5F5' },
+};
 
 interface SPNotificationsScreenProps {
   onBack: () => void;
 }
 
 export default function SPNotificationsScreen({ onBack }: SPNotificationsScreenProps) {
-  const [notifs, setNotifs] = useState(NOTIFICATIONS);
-  const unread = notifs.filter((n) => !n.read).length;
+  const { data, loading, error, reload } = useAsyncData(
+    () => api.notifications() as Promise<NotificationRow[]>,
+    [],
+  );
+  const notifs = data ?? [];
+  const unread = notifs.filter((n) => !n.read_at).length;
 
-  const markAllRead = () => setNotifs((p) => p.map((n) => ({ ...n, read: true })));
+  const markAllRead = async () => {
+    await api.markAllNotificationsRead();
+    reload();
+  };
+  const markRead = async (id: string) => {
+    await api.markNotificationRead(id);
+    reload();
+  };
 
-  const groups: Record<string, typeof NOTIFICATIONS> = {};
-  notifs.forEach((n) => { if (!groups[n.date]) groups[n.date] = []; groups[n.date].push(n); });
+  const groups: Record<string, NotificationRow[]> = {};
+  notifs.forEach((n) => {
+    const bucket = dateBucket(n.created_at);
+    if (!groups[bucket]) groups[bucket] = [];
+    groups[bucket].push(n);
+  });
 
   return (
     <View style={styles.screen}>
@@ -50,11 +75,16 @@ export default function SPNotificationsScreen({ onBack }: SPNotificationsScreenP
       </View>
 
       <ScrollView style={styles.body} contentContainerStyle={styles.bodyContent} showsVerticalScrollIndicator={false}>
+        {loading && <ActivityIndicator style={{ marginTop: 20 }} color={Colors.brandTeal} />}
+        {!!error && !loading && <Text style={styles.stateText}>{error}</Text>}
+        {!loading && !error && notifs.length === 0 && (
+          <Text style={styles.stateText}>You have no notifications yet.</Text>
+        )}
         {Object.entries(groups).map(([date, items]) => (
           <View key={date}>
             <Text style={styles.dateLabel}>{date}</Text>
             {items.map((n) => (
-              <NotificationCard key={n.id} notification={n} onPress={() => setNotifs((p) => p.map((x) => x.id === n.id ? { ...x, read: true } : x))} />
+              <NotificationCard key={n.id} notification={n} onPress={() => !n.read_at && markRead(n.id)} />
             ))}
           </View>
         ))}
@@ -77,6 +107,7 @@ const styles = StyleSheet.create({
   body: { flex: 1 },
   bodyContent: { paddingHorizontal: Spacing.screenH, paddingTop: 20, paddingBottom: 20 },
   dateLabel: { color: Colors.muted, fontSize: 12, fontWeight: '700', fontFamily: 'Inter', textTransform: 'uppercase', letterSpacing: 0.8, marginBottom: 10, marginTop: 4 },
+  stateText: { color: Colors.slate, fontSize: 14, fontFamily: 'Inter', textAlign: 'center', marginTop: 30 },
   card: { backgroundColor: Colors.white, borderRadius: Radii.card, padding: 16, marginBottom: 10, flexDirection: 'row', alignItems: 'flex-start', ...Shadows.card },
   cardUnread: { borderLeftWidth: 4, borderLeftColor: Colors.brandTeal },
   iconWrap: { width: 46, height: 46, borderRadius: 14, alignItems: 'center', justifyContent: 'center', marginRight: 12 },
@@ -89,21 +120,23 @@ const styles = StyleSheet.create({
   time: { color: Colors.muted, fontSize: 11, fontFamily: 'Inter' },
 });
 
-function NotificationCard({ notification: n, onPress }: { notification: typeof NOTIFICATIONS[number]; onPress: () => void }) {
-  const Icon = [BriefcaseBusiness, CircleCheckBig, Star, AlertTriangle, MessageCircle][Number(n.id) - 1];
+function NotificationCard({ notification: n, onPress }: { notification: NotificationRow; onPress: () => void }) {
+  const meta = ICON_BY_TYPE[n.type] ?? { icon: BriefcaseBusiness, bg: '#EFF6FF' };
+  const Icon = meta.icon;
+  const isRead = !!n.read_at;
 
   return (
-    <TouchableOpacity style={[styles.card, !n.read && styles.cardUnread]} activeOpacity={0.85} onPress={onPress}>
-      <View style={[styles.iconWrap, { backgroundColor: n.iconBg }]}>
+    <TouchableOpacity style={[styles.card, !isRead && styles.cardUnread]} activeOpacity={0.85} onPress={onPress}>
+      <View style={[styles.iconWrap, { backgroundColor: meta.bg }]}>
         <Icon size={22} color={Colors.brandTeal} />
       </View>
       <View style={styles.content}>
         <View style={styles.titleRow}>
           <Text style={styles.title}>{n.title}</Text>
-          {!n.read && <View style={styles.dot} />}
+          {!isRead && <View style={styles.dot} />}
         </View>
-        <Text style={styles.message}>{n.message}</Text>
-        <Text style={styles.time}>{n.time}</Text>
+        <Text style={styles.message}>{n.body}</Text>
+        <Text style={styles.time}>{timeAgo(n.created_at)}</Text>
       </View>
     </TouchableOpacity>
   );

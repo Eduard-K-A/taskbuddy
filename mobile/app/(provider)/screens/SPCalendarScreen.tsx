@@ -10,25 +10,38 @@
  */
 
 import React, { useState } from 'react';
-import { ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { ActivityIndicator, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { UserRound } from 'lucide-react-native';
 import { Colors, Radii, Shadows, Sizes, Spacing } from '../../../src/constants/theme';
+import { useAsyncData } from '../../../src/hooks/useAsyncData';
+import { api } from '../../../src/lib/api';
+import { timeOfDay } from '../../../src/lib/format';
 
 const DAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
-const MONTH_DAYS = Array.from({ length: 31 }, (_, i) => i + 1);
-
-const SCHEDULE = [
-  { id: '1', time: '9:00 AM', title: 'Kitchen Cleaning', client: 'Alex Chen', duration: '3 hrs', color: '#22C55E' },
-  { id: '2', time: '1:00 PM', title: 'Garden Maintenance', client: 'Maria Santos', duration: '2 hrs', color: '#3B82F6' },
-  { id: '3', time: '4:00 PM', title: 'Deep Cleaning', client: 'Jose Reyes', duration: '4 hrs', color: '#F59E0B' },
-];
+const BAR_COLORS = ['#22C55E', '#3B82F6', '#F59E0B', '#8B5CF6'];
 
 interface SPCalendarScreenProps {
   onBack?: () => void;
 }
 
 export default function SPCalendarScreen({ onBack }: SPCalendarScreenProps) {
-  const [selectedDay, setSelectedDay] = useState(13);
+  const now = new Date();
+  const [selectedDay, setSelectedDay] = useState(now.getDate());
+  const year = now.getFullYear();
+  const month = now.getMonth(); // 0-indexed
+  const daysInMonth = new Date(year, month + 1, 0).getDate();
+  const MONTH_DAYS = Array.from({ length: daysInMonth }, (_, i) => i + 1);
+  const monthLabel = now.toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
+
+  // Fetch this month's bookings once; filter to the selected day client-side.
+  const from = new Date(year, month, 1).toISOString();
+  const to = new Date(year, month + 1, 0, 23, 59, 59).toISOString();
+  const { data, loading } = useAsyncData(() => api.bookings({ from, to }), []);
+  const bookings = data ?? [];
+
+  const daySchedule = bookings
+    .filter((b) => new Date(b.scheduled_at).getDate() === selectedDay)
+    .sort((a, b) => a.scheduled_at.localeCompare(b.scheduled_at));
 
   return (
     <View style={styles.screen}>
@@ -44,13 +57,13 @@ export default function SPCalendarScreen({ onBack }: SPCalendarScreenProps) {
             <Text style={styles.addBtnText}>+</Text>
           </TouchableOpacity>
         </View>
-        <Text style={styles.monthTitle}>May 2026</Text>
+        <Text style={styles.monthTitle}>{monthLabel}</Text>
         <View style={styles.monthNav}>
           <TouchableOpacity style={styles.navBtn} activeOpacity={0.8}><Text style={styles.navBtnText}>←</Text></TouchableOpacity>
           <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.daysScroll}>
             {MONTH_DAYS.map((day) => {
               const isSelected = day === selectedDay;
-              const dayOfWeek = DAYS[(day + 2) % 7]; // approximate
+              const dayOfWeek = DAYS[new Date(year, month, day).getDay()];
               return (
                 <TouchableOpacity key={day} style={[styles.dayBtn, isSelected && styles.dayBtnActive]} onPress={() => setSelectedDay(day)} activeOpacity={0.8}>
                   <Text style={[styles.dayLabel, isSelected && styles.dayLabelActive]}>{dayOfWeek}</Text>
@@ -64,28 +77,36 @@ export default function SPCalendarScreen({ onBack }: SPCalendarScreenProps) {
       </View>
 
       <ScrollView style={styles.body} contentContainerStyle={styles.bodyContent} showsVerticalScrollIndicator={false}>
-        <Text style={styles.sectionTitle}>Schedule — May {selectedDay}</Text>
-        {SCHEDULE.map((item) => (
-          <View key={item.id} style={styles.scheduleCard}>
-            <View style={[styles.scheduleBar, { backgroundColor: item.color }]} />
-            <View style={styles.scheduleContent}>
-              <Text style={styles.scheduleTime}>{item.time} · {item.duration}</Text>
-              <Text style={styles.scheduleTitle}>{item.title}</Text>
-              <View style={styles.scheduleClientRow}>
-                <UserRound size={13} color={Colors.slate} />
-                <Text style={styles.scheduleClientLabel}>{item.client}</Text>
-              </View>
-              <Text style={styles.scheduleClient}>👤 {item.client}</Text>
-            </View>
-            <TouchableOpacity style={styles.detailArrow} activeOpacity={0.8}>
-              <Text style={styles.detailArrowText}>›</Text>
-            </TouchableOpacity>
+        <Text style={styles.sectionTitle}>
+          Schedule — {now.toLocaleDateString('en-US', { month: 'short' })} {selectedDay}
+        </Text>
+        {loading && <ActivityIndicator style={{ marginTop: 10 }} color={Colors.brandTeal} />}
+        {!loading && daySchedule.length === 0 && (
+          <View style={styles.emptySlot}>
+            <Text style={styles.emptySlotText}>No bookings scheduled for this day.</Text>
           </View>
-        ))}
-
-        <View style={styles.emptySlot}>
-          <Text style={styles.emptySlotText}>+ Free time after 8:00 PM</Text>
-        </View>
+        )}
+        {daySchedule.map((booking, i) => {
+          const hrs = booking.duration_minutes / 60;
+          const durationLabel = `${hrs % 1 === 0 ? hrs : hrs.toFixed(1)} hr${hrs === 1 ? '' : 's'}`;
+          const clientName = booking.client?.full_name ?? 'Client';
+          return (
+            <View key={booking.id} style={styles.scheduleCard}>
+              <View style={[styles.scheduleBar, { backgroundColor: BAR_COLORS[i % BAR_COLORS.length] }]} />
+              <View style={styles.scheduleContent}>
+                <Text style={styles.scheduleTime}>{timeOfDay(booking.scheduled_at)} · {durationLabel}</Text>
+                <Text style={styles.scheduleTitle}>{booking.jobs?.title ?? 'Booking'}</Text>
+                <View style={styles.scheduleClientRow}>
+                  <UserRound size={13} color={Colors.slate} />
+                  <Text style={styles.scheduleClientLabel}>{clientName}</Text>
+                </View>
+              </View>
+              <TouchableOpacity style={styles.detailArrow} activeOpacity={0.8}>
+                <Text style={styles.detailArrowText}>›</Text>
+              </TouchableOpacity>
+            </View>
+          );
+        })}
 
         <View style={{ height: 20 }} />
       </ScrollView>
