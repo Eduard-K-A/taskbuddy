@@ -1,0 +1,152 @@
+import {
+  BadRequestException,
+  ForbiddenException,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
+import { SupabaseService } from '../supabase/supabase.service';
+import type { Profile } from '../common/types';
+
+interface ConversationRow {
+  id: string;
+  job_id: string;
+  client_id: string;
+  provider_id: string;
+  last_message_at: string | null;
+  created_at: string;
+  jobs?: { title: string; status: string } | null;
+  client?: { full_name: string; avatar_url: string | null } | null;
+  provider?: { full_name: string; avatar_url: string | null } | null;
+}
+
+// Disambiguate the two profiles FKs on conversations for PostgREST embedding.
+const CONVERSATION_SELECT =
+  '*, jobs(title, status), client:profiles!conversations_client_id_fkey(full_name, avatar_url), provider:profiles!conversations_provider_id_fkey(full_name, avatar_url)';
+
+@Injectable()
+export class ChatService {
+  constructor(private readonly supabase: SupabaseService) {}
+
+  /** Conversations the caller participates in, most-recent first. */
+  async listConversations(user: Profile) {
+    const { data, error } = await this.supabase.admin
+      .from('conversations')
+      .select(CONVERSATION_SELECT)
+      .or(`client_id.eq.${user.id},provider_id.eq.${user.id}`)
+      .order('last_message_at', { ascending: false, nullsFirst: false })
+      .order('created_at', { ascending: false });
+    if (error) throw new BadRequestException(error.message);
+    return (data ?? []).map((c) => this.shape(c as ConversationRow, user));
+  }
+
+  /**
+   * Returns the conversation for a job, creating it on first open. Only the
+   * job's client or its assigned provider may open it.
+   */
+  async openForJob(user: Profile, jobId: string) {
+    const { data: job, error: jobError } = await this.supabase.admin
+      .from('jobs')
+      .select('id, client_id, assigned_provider_id')
+      .eq('id', jobId)
+      .maybeSingle();
+    if (jobError) throw new BadRequestException(jobError.message);
+    if (!job) throw new NotFoundException('Job not found');
+    if (!job.assigned_provider_id) {
+      throw new BadRequestException(
+        'A conversation opens once the job has an assigned provider',
+      );
+    }
+    const isClient = job.client_id === user.id;
+    const isProvider = job.assigned_provider_id === user.id;
+    if (!isClient && !isProvider) {
+      throw new ForbiddenException('You are not a participant of this job');
+    }
+
+    const existing = await this.supabase.admin
+      .from('conversations')
+      .select(CONVERSATION_SELECT)
+      .eq('job_id', jobId)
+      .maybeSingle();
+    if (existing.data) return this.shape(existing.data as ConversationRow, user);
+
+    const { data: created, error: createError } = await this.supabase.admin
+      .from('conversations')
+      .insert({
+        job_id: jobId,
+        client_id: job.client_id,
+        provider_id: job.assigned_provider_id,
+      })
+      .select(CONVERSATION_SELECT)
+      .single();
+    if (createError) throw new BadRequestException(createError.message);
+    return this.shape(created as ConversationRow, user);
+  }
+
+  async getMessages(user: Profile, conversationId: string) {
+    await this.assertParticipant(user, conversationId);
+    const { data, error } = await this.supabase.admin
+      .from('messages')
+      .select('*')
+      .eq('conversation_id', conversationId)
+      .order('created_at', { ascending: true });
+    if (error) throw new BadRequestException(error.message);
+    return data ?? [];
+  }
+
+  async sendMessage(user: Profile, conversationId: string, body: string) {
+    await this.assertParticipant(user, conversationId);
+    const { data, error } = await this.supabase.admin
+      .from('messages')
+      .insert({
+        conversation_id: conversationId,
+        sender_id: user.id,
+        body,
+      })
+      .select('*')
+      .single();
+    if (error) throw new BadRequestException(error.message);
+    return data;
+  }
+
+  /** Marks messages sent by the other participant as read. */
+  async markRead(user: Profile, conversationId: string) {
+    await this.assertParticipant(user, conversationId);
+    await this.supabase.admin
+      .from('messages')
+      .update({ read_at: new Date().toISOString() })
+      .eq('conversation_id', conversationId)
+      .neq('sender_id', user.id)
+      .is('read_at', null);
+    return { success: true };
+  }
+
+  private async assertParticipant(user: Profile, conversationId: string) {
+    const { data, error } = await this.supabase.admin
+      .from('conversations')
+      .select('id, client_id, provider_id')
+      .eq('id', conversationId)
+      .maybeSingle();
+    if (error) throw new BadRequestException(error.message);
+    if (!data) throw new NotFoundException('Conversation not found');
+    if (data.client_id !== user.id && data.provider_id !== user.id) {
+      throw new ForbiddenException('You are not a participant of this chat');
+    }
+    return data;
+  }
+
+  /** Flatten to the counterpart the caller is talking to, for easy UI rendering. */
+  private shape(c: ConversationRow, user: Profile) {
+    const isClient = c.client_id === user.id;
+    const counterpart = isClient ? c.provider : c.client;
+    return {
+      id: c.id,
+      job_id: c.job_id,
+      job_title: c.jobs?.title ?? null,
+      job_status: c.jobs?.status ?? null,
+      counterpart_name: counterpart?.full_name ?? null,
+      counterpart_avatar_url: counterpart?.avatar_url ?? null,
+      last_message_at: c.last_message_at,
+      created_at: c.created_at,
+    };
+  }
+}
