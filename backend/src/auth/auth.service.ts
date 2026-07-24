@@ -96,13 +96,20 @@ export class AuthService {
 
   /** Profile plus the provider extension when the caller is a provider. */
   async me(user: Profile) {
+    // `profiles` has no email column (it lives in auth.users); attach it so the
+    // frontends can display the account email without a second round-trip.
+    const { data: authData } = await this.supabase.admin.auth.admin.getUserById(
+      user.id,
+    );
+    const profile = { ...user, email: authData?.user?.email ?? null };
+
     if (user.role !== 'provider')
-      return { profile: user, provider_profile: null };
+      return { profile, provider_profile: null };
     const { data } = await this.supabase.admin
       .from('provider_profiles')
       .select('*, service_categories(name)')
       .eq('profile_id', user.id)
       .maybeSingle();
-    return { profile: user, provider_profile: data };
+    return { profile, provider_profile: data };
   }
 }

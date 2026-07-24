@@ -10,6 +10,9 @@ export type JobStatus =
   | 'expired';
 export type ApplicationStatus =
   'pending' | 'accepted' | 'rejected' | 'withdrawn';
+export type WalletTxnDirection = 'credit' | 'debit';
+export type WalletTxnStatus = 'pending' | 'completed' | 'failed';
+export type BookingStatus = 'scheduled' | 'completed' | 'cancelled';
 
 export interface Profile {
   id: string;
