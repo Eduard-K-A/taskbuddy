@@ -92,3 +92,43 @@ export async function requestExpoPushRegistration(): Promise<PushRegistrationOut
     return { status: 'error', reason: message };
   }
 }
+
+/**
+ * Subscribes to the user tapping a push notification banner. Guarded the
+ * same way as registration above: a static `expo-notifications` import
+ * crashes Android Expo Go, so this only loads the module on a build that
+ * supports it. Returns a no-op unsubscribe on web / Expo Go.
+ */
+export async function subscribeToNotificationTaps(
+  cb: (data: Record<string, string>) => void,
+): Promise<() => void> {
+  if (Platform.OS === 'web' || isRunningInExpoGo()) {
+    return () => {};
+  }
+
+  const Notifications = await import('expo-notifications');
+  const subscription = Notifications.addNotificationResponseReceivedListener((response) => {
+    if (response.actionIdentifier !== Notifications.DEFAULT_ACTION_IDENTIFIER) return;
+    cb(response.notification.request.content.data as Record<string, string>);
+  });
+  return () => subscription.remove();
+}
+
+/**
+ * Cold-start case: the app was launched *by* tapping a notification, so the
+ * live listener above (registered after mount) never fires for that tap.
+ * Reads it once and clears it so it isn't replayed on a later foreground.
+ */
+export async function consumeLastNotificationTap(): Promise<Record<string, string> | null> {
+  if (Platform.OS === 'web' || isRunningInExpoGo()) {
+    return null;
+  }
+
+  const Notifications = await import('expo-notifications');
+  const response = Notifications.getLastNotificationResponse();
+  if (!response || response.actionIdentifier !== Notifications.DEFAULT_ACTION_IDENTIFIER) {
+    return null;
+  }
+  Notifications.clearLastNotificationResponse();
+  return response.notification.request.content.data as Record<string, string>;
+}
