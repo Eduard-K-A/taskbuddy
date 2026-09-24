@@ -80,6 +80,7 @@ Other scripts:
 
 ```bash
 npm run typecheck   # tsc --noEmit
+npm test            # jest (jest-expo preset + React Native Testing Library)
 npm run ios         # expo run:ios (dev build, same reasoning as Android)
 ```
 
@@ -142,8 +143,10 @@ Non-tab screens (Job Detail, Chat, Edit Profile, Settings, Help & Support,
 …) are tracked on a small back-stack (`hoStack`/`spStack` in `App.tsx`), not
 just "jump to the active tab" — `hoNavigate`/`spNavigate` push the screen
 being left before switching, and `hoBack`/`spBack` pop it. Landing on a tab
-(or the Create Job flow) resets the stack, same as tapping a tab in a native
-app.
+resets the stack, same as tapping a tab in a native app. Create Job is the one
+exception: it pushes onto the stack like an ordinary screen (so "My Jobs" →
+New → back returns to My Jobs, not Home), and its own onBack/onSuccess
+handlers land it on the right tab when the flow ends.
 
 Adding a new screen requires three edits: add the key to
 `src/types/navigation.ts`, render it in `App.tsx`, and navigate to it via
@@ -347,6 +350,84 @@ Accept returns 404). What has to be applied and deployed, and by whom, is in
 > 2026-08-14, 0020 on 2026-08-17), and the API carrying this work is deployed.
 > The verification queries in the handoff doc's §3 and §4 are repeatable if you
 > want to confirm the state of a given project yourself.
+
+### QA round 2 (2026-09) — needs migration 0034 + the current API deployed
+
+`main` also depends on **migration `0034_qa_provider_admin.sql`** and the API
+from commits `9897405`/`b10c149`: verification submit sends `document_type`,
+Accept Booking sends a location, and `/skill-requests*` are new routes. As of
+this writing, whether the live Render/Supabase deployment carries this work is
+**unverified** — the deployed API refused connections from this session's
+network. **Confirm `GET /health` on the deployed API before publishing an
+`eas update` or a new build from `main`** — see `HANDOFF.md`'s "QA round 2
+backend asks" section for the full list of what breaks on an older API.
+
+What this round fixed, mobile-only (see `HANDOFF.md` for the backend asks it
+also produced):
+- The safe-area double-padding on every client tab screen, and missing insets
+  on two auth screens.
+- A bug where sending a proposal left "Submit Proposal" visible until the
+  screen was revisited, so a second tap 400'd as a duplicate application.
+- Keyboard dismissal on outside-tap for the Decline Booking, Withdraw (both
+  roles), and Add Money modals, the sign-up code-entry step, and the chat
+  empty state.
+- Required-field asterisks on the sign-up form (Name, Email, Password,
+  Confirm Password, and Skill Category for providers).
+- The Accept Booking modal now starts with an empty address field instead of
+  pre-filling the provider's home address.
+- The provider's "Verify to Apply" banner now clears on app foreground, not
+  only after an app restart or a revisit to Verification.
+- Change Password no longer burns a token refresh re-checking a wrong current
+  password.
+- Confirm Completion (releases escrow) and the destructive actions (Reject
+  proposal, Discard draft, Cancel Job) now ask first / are styled red.
+- Several small polish items: matching button sizing on the post-job success
+  screen, a scrollable success screen so a long title/address can't hide the
+  buttons, the correct "couldn't load" toast when the wallet fails to load,
+  and no more empty-state flash on Home while jobs are still loading.
+
+**Deferred, not attempted this round:**
+- Dark mode (still a stubbed Settings toggle with no theme applied).
+- Provider avatars on the client's Proposals list and provider profile (the
+  API already returns `avatar_url`; only initials are rendered).
+
+Four other items flagged here as deferred — the header top-inset refactor, tutorial replay,
+declined-job visibility, and push-tap routing — were picked up in a follow-up pass; see
+"Follow-up pass (2026-09-24)" below.
+
+### Follow-up pass (2026-09-24) — declined-job visibility, tutorial replay, push-tap routing, header insets
+
+Four mobile-only items identified as unblocked (no backend deploy, no product decision needed)
+after QA round 2, all shipped on the same branch:
+
+- **Declined-job visibility.** A provider declining/losing a booking left it invisible in every
+  My Work tab (see QA round 2 above for why). Added a 4th "Cancelled" tab to
+  `SPMyJobsScreen.tsx` (matches `status === 'cancelled' || 'expired'`, same convention the
+  homeowner side already used) and a locked "Booking Cancelled" row on that job's
+  `SPJobDetailScreen.tsx` instead of a blank action bar.
+- **Tutorial replay.** Help & Support (both roles) now has a "View tutorial" row that re-opens
+  the onboarding slides (`src/components/HelpSupportScreen.tsx`'s new `onViewTutorial` prop,
+  wired to a new `'Tutorial'` screen key rendering `OnboardingScreen` bare, not wrapped in
+  `ScreenFrame`, since it already pads its own safe areas).
+- **Push-tap routing groundwork.** Tapping a push notification now resolves a target screen
+  (`src/lib/notificationRouting.ts`'s `resolveNotificationTarget`, extracted from — and now shared
+  by — both in-app notification screens' existing logic) and routes there once auth/onboarding
+  gates clear, handling both a live tap and the cold-start case (`getLastNotificationResponse`).
+  **This is dormant until push itself works** — see "Push delivery" below and `HANDOFF.md` §4
+  (Firebase/FCM); **no backend work is needed for routing itself**, it activates automatically
+  once a device obtains a push token.
+- **Header inset refactor.** All 29 screens that used the fixed `Sizes.statusBarHeight` estimate
+  now use a new `useHeaderTop()` hook (`src/hooks/useHeaderTop.ts`) — the real, rotation-reactive
+  safe-area inset, same relationship `useAuthLayout.ts` already used for the auth screens.
+
+**Still owed, mobile-only (not backend, not blocked on anything):**
+- Real-device visual verification of the header refactor — 3-button nav, gesture nav, and at
+  least one notched/cutout device profile. Not unit-testable (RNTL doesn't measure real layout
+  against device insets).
+- A dev-build manual check of the push-tap flow (schedule a local notification shaped like a real
+  push payload, background/kill the app, tap it, confirm it lands on the right screen) — not
+  RNTL-testable, and needs a development build rather than Expo Go per the existing push-code
+  guard.
 
 ---
 
@@ -631,11 +712,10 @@ was trimmed to remove rows that duplicated a bottom-nav tab or a header icon.
 | **Dark Mode** | Half done: the *preference* persists (`user_settings.dark_mode` via `PATCH /settings`), but nothing applies it — there is still no theme switching. Both Settings screens say so under the switch rather than implying a repaint that never comes. The blocker is the ~40 screens still using inline hex instead of `V6Colors` tokens; see [`CHANGELOG.md`](./CHANGELOG.md) for the theming approach that was built and then deliberately reverted to leave this open |
 | **Language** | Settings modal states English is the only option — no i18n system exists to back a real picker |
 | **Wallet Transfer** | Deliberately not built, backend or front. Wallet-to-wallet transfer turns the wallet into a money-transmission service, which is a licensing matter in PH, not an engineering one |
-| **Push delivery** | Code complete end to end, **but not yet functional**: the EAS `projectId` is set, but Firebase (FCM) credentials aren't, so no push token is obtained on Android. Remote push also needs a development build (not Expo Go) on SDK 57. The `notifications` table remains the source of truth and the in-app list is unaffected — see [Live chat and push notifications](#live-chat-and-push-notifications) |
+| **Push delivery** | Code complete end to end, **but not yet functional**: the EAS `projectId` is set, but Firebase (FCM) credentials aren't, so no push token is obtained on Android. Remote push also needs a development build (not Expo Go) on SDK 57. The `notifications` table remains the source of truth and the in-app list is unaffected — see [Live chat and push notifications](#live-chat-and-push-notifications). Tap-routing (which screen a tapped notification opens) is already wired and needs no further mobile work — see "Follow-up pass (2026-09-24)" above — it just has nothing to route yet until a token exists |
 | **Realtime chat** | Message delivery is live through authenticated SSE; attachments are wired (photo picker, upload, rendering). The call button remains inert — no signalling path exists |
 | **Counterpart avatars** | Chat, applicant, and review payloads all carry `avatar_url`; those screens still render initials. (The signed-in user's *own* avatar does render — see `OwnAvatar`) |
 | **Provider calendar write** | Bookings are created by the backend when a job is assigned, not from this screen |
-| **Notch/edge-to-edge status-bar spacing** | `Sizes.statusBarHeight` uses `StatusBar.currentHeight` (Android, built-in RN API) as a floor under the previous fixed `52`, which fixes most cases without a new dependency — but it's read once at module load, not on rotation/inset changes, and iOS still uses a fixed estimate. A full fix means adopting `react-native-safe-area-context` (new dependency) and touching header padding in every screen |
 
 ### Wired against migrations 0022–0024
 

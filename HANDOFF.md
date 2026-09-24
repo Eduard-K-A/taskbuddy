@@ -10,6 +10,123 @@ Each item below: what's wrong, why it's backend, and what "done" looks like.
 
 ---
 
+## Update 2026-09-24 (later) — mobile follow-up pass, no new backend asks
+
+A follow-up pass picked up four items flagged as deferred in the QA round 2 note below —
+declined-job visibility, a tutorial replay entry point, push-tap routing groundwork, and a
+header-inset refactor across 29 screens. All four were mobile-only and are now done on
+`fix/mobile-qa-round2` (full detail in `mobile/README.md`'s "Follow-up pass (2026-09-24)"
+section). **This adds nothing to your list below** — no schema, endpoint, or deploy needed for any
+of it.
+
+One thing worth knowing if you're the one who eventually resolves §4 (Firebase/FCM): the mobile
+push-tap routing (which screen a tapped notification opens) is already built and wired into
+`App.tsx`. It's inert today because there's no token to receive a tap on, but once FCM lands and a
+device gets a real token, it starts routing automatically — no mobile follow-up needed at that
+point, nothing further to ask for here.
+
+Two mobile-only manual verifications are still owed (not backend asks, just for visibility): a
+real-device check of the header-inset refactor, and a dev-build check of the push-tap flow. Both
+are things the mobile side can only close on real hardware, not something you need to act on.
+
+---
+
+## Update 2026-09-24 — QA round 2 backend asks
+
+A second manual QA pass (`docs/manual_exploratory_test_documentation/`) was verified item-by-item
+against the actual code, and everything mobile-only fixable was fixed on `fix/mobile-qa-round2`
+(see `mobile/README.md`'s "QA round 2" note for the mobile-side list). What's left needs backend
+work, a deploy, or a product decision.
+
+### 0. BLOCKER — confirm PR #65's backend is deployed before shipping a mobile build
+
+`main` already has mobile code that depends on backend work merged in PR #65: migration
+`0034_qa_provider_admin.sql`, plus the API changes in `9897405` (verification `document_type`,
+`AcceptJobDto` location, `/skill-requests*`, admin filters) and `b10c149` (image-signature MIME
+fallback). The deployed API (`taskbuddy-kpek.onrender.com`) refused connections from this session's
+network, so **whether this is live is unverified.** Against an older API:
+
+- Provider verification submit 400s (`document_type` isn't whitelisted — `forbidNonWhitelisted`).
+- `/skill-requests*` 404s.
+- `GET /providers/:id/work` (client's "recent work" on a provider profile) silently shows nothing.
+- The admin Verification column shows "Not submitted" for every provider.
+
+**Deploy order:** migration `0034` → the API from `main` → only then a mobile build or `eas update`.
+Check with `GET /health`.
+
+### 1. One-time backfill: calendar bookings for jobs accepted before the accept-location change
+
+Accepting a booking now always creates a `bookings` row (even for ASAP jobs), so the calendar shows
+a dot. Jobs accepted **before** this change — especially ASAP ones — still have no booking row and
+so no dot. Needs a one-time SQL backfill of `bookings` for `confirmed`/`in_progress` jobs that have
+none. Not urgent; only affects historical data.
+
+### 2. Urgency filter on the provider job feed doesn't actually filter server-side
+
+`SPHomeScreen`'s Urgent/Normal/Flexible chips filter only the 20 jobs already loaded into memory
+(`api.browseJobs({ limit: 20, ... })`), so "Normal" or "Flexible" can show nothing even when such
+jobs exist further down the feed. Real fix: add an `urgency` param to `BrowseJobsQueryDto` and
+filter in `jobs.service.ts`'s `browse`. A backend-free stopgap (raise the limit, or add paging) is
+possible but doesn't scale.
+
+### 3. Change Password: wrong-password response code, and no way to detect a Google-only account
+
+Mobile now skips its own refresh-and-retry on a change-password 401 (fixed this round), but two
+backend gaps remain:
+- A wrong current password still returns generic `401 Unauthorized`. Returning `400`/`403` instead
+  would let the client tell "wrong password" apart from "your session actually expired" without
+  inspecting the message string.
+- Google-only accounts have no password, so Change Password always fails for them with a confusing
+  message. `GET /auth/me` (or a new field) needs to expose whether the account has a password / its
+  auth provider, so the app can hide the option or offer "set a password" instead. Product decision
+  on which.
+
+### 4. Photo portfolio for providers doesn't exist
+
+The client's "view provider profile like a portfolio" (QA item, client #8) shows `GET
+/providers/:id/work` (title/service/date, added this round) but no photos — there's no portfolio
+table, storage bucket, or endpoint, and `BACKEND_SCHEMA.md` §14 ("Out of Scope") explicitly lists
+"Provider portfolios and certifications" as deliberately deferred. Needs a product decision before
+any schema work.
+
+### 5. Approved secondary-service requests don't affect matching
+
+`skill-requests` (added in PR #65) lets a provider request a secondary service category, and an
+admin can approve it, but nothing else reads the approved row — it doesn't affect the job feed or
+the recommendation engine's eligibility. Needs a product decision: should an approved secondary
+service actually let a provider see/match jobs in that category?
+
+### 6. Provider's accept-time location is stored but never shown to anyone
+
+`AcceptJobDto`'s `address`/`latitude`/`longitude` (PR #65) are saved when a provider accepts a
+booking, so the client could in principle see the real distance the story asked for — but nothing
+in mobile or web currently reads it back. Needs a decision on whether/where to surface it (job
+detail? a map thumbnail?) before building the read side.
+
+### 7. Admin: send the new filters to the backend instead of filtering client-side
+
+`admin.dto.ts` already has `created_after`/`verification` query params (PR #65), but the web admin
+Users page only sends `page`/`limit`/`status=deleted` and filters the "new users" and verification
+columns over whatever page it already has (capped at 200 rows). Wiring the existing params through
+`web/src/lib/services/index.ts` would make both filters correct past the first 200 users. Web-only,
+optional.
+
+### Product decisions raised by this pass (not backend work, but need an answer)
+
+- What is **User Story 12**? Referenced in this file's own intro ("the 12 core TaskBuddy user
+  stories") and in the original QA doc, but not defined anywhere in the repo, and the repo has two
+  different, non-matching numbered story lists (this file's vs. `BACKEND_SCHEMA.md`'s "backlog
+  stories").
+- Should a job hired through a proposal skip the provider's own accept/decline confirmation step
+  (currently every hire goes through `assigned` → provider confirms), i.e. was that intentional?
+- Should the provider Edit Profile address stay required, given Accept Booking now asks for a
+  current location separately? Job matching (recommendation features) uses the profile location, so
+  dropping the requirement has a matching-side cost to weigh.
+- Should "no scrolling on any screen" (original shared QA item #2) apply to long forms like sign-up,
+  or only to screens meant to fit on one page?
+
+---
+
 ## Update 2026-09-18 (later) — handoff pass
 
 Where each item stands after a pass over this file, checked against the deployed API:
