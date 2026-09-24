@@ -11,7 +11,7 @@
 
 import React from 'react';
 import { Linking, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
-import { ArrowLeft, ExternalLink, Mail } from 'lucide-react-native';
+import { ArrowLeft, ExternalLink, Mail, PlayCircle } from 'lucide-react-native';
 import { Sizes, Spacing, V6Colors, V6Radii, V6Shadows } from '../constants/theme';
 
 const C = V6Colors;
@@ -46,9 +46,10 @@ const SP_FAQS = [
 interface HelpSupportScreenProps {
   role: 'homeowner' | 'provider';
   onBack: () => void;
+  onViewTutorial?: () => void;
 }
 
-export default function HelpSupportScreen({ role, onBack }: HelpSupportScreenProps) {
+export default function HelpSupportScreen({ role, onBack, onViewTutorial }: HelpSupportScreenProps) {
   const faqs = role === 'provider' ? SP_FAQS : HO_FAQS;
 
   return (
@@ -67,7 +68,23 @@ export default function HelpSupportScreen({ role, onBack }: HelpSupportScreenPro
         contentContainerStyle={styles.bodyContent}
         showsVerticalScrollIndicator={false}
       >
-        <Text style={styles.sectionTitle}>Frequently Asked Questions</Text>
+        {onViewTutorial && (
+          <TouchableOpacity
+            style={styles.contactCard}
+            activeOpacity={0.8}
+            onPress={onViewTutorial}
+          >
+            <View style={styles.contactIcon}>
+              <PlayCircle size={19} color={C.cyan700} />
+            </View>
+            <View style={{ flex: 1 }}>
+              <Text style={styles.contactTitle}>View tutorial</Text>
+              <Text style={styles.contactEmail}>Replay the app walkthrough</Text>
+            </View>
+          </TouchableOpacity>
+        )}
+
+        <Text style={[styles.sectionTitle, onViewTutorial && styles.sectionSpacing]}>Frequently Asked Questions</Text>
         <View style={styles.card}>
           {faqs.map((item, i) => (
             <View key={item.q} style={[styles.faqRow, i < faqs.length - 1 && styles.rowBorder]}>

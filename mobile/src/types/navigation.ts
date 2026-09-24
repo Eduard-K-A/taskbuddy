@@ -22,7 +22,8 @@ export type HOScreen =
   | 'Dispute Filing'
   | 'Dispute Status'
   | 'Settings'
-  | 'Help & Support';
+  | 'Help & Support'
+  | 'Tutorial';
 
 // Provider screen keys
 export type SPScreen =
@@ -40,4 +41,5 @@ export type SPScreen =
   | 'Payouts'
   | 'My Services'
   | 'Settings'
-  | 'Help & Support';
+  | 'Help & Support'
+  | 'Tutorial';
