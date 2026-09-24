@@ -2,13 +2,15 @@
 
 > **Updated 2026-09-24.** Each item below now carries a status line, added after: (1) verifying
 > what PR #65 (merged before this pass) actually fixed in code, (2) the QA-round-2 mobile-only fix
-> pass on `fix/mobile-qa-round2`, and (3) a `/code-review` pass on that branch and the regression
-> fixes it turned up. Legend: ✅ Fixed and verified in code · 🟡 Partially fixed / needs a live
-> deploy or device check to confirm · ⏸️ Deferred, not attempted · 🔧 Needs backend work or a
-> product decision, tracked in `HANDOFF.md`. Full detail, file:line evidence, and backend/product
-> asks live in `HANDOFF.md` and `mobile/README.md`'s "QA round 2" note; the companion
-> `Test Documentation Statuses.md` has the fuller narrative for each item. Nothing here has been
-> committed yet — everything sits on `fix/mobile-qa-round2` for review.
+> pass on `fix/mobile-qa-round2`, (3) a `/code-review` pass on that branch and the regression
+> fixes it turned up, and (4) a follow-up pass on the same branch that picked up four items
+> previously marked deferred (declined-job visibility, tutorial replay, push-tap routing
+> groundwork, and the header inset refactor). Legend: ✅ Fixed and verified in code · 🟡 Partially
+> fixed / needs a live deploy or device check to confirm · ⏸️ Deferred, not attempted · 🔧 Needs
+> backend work or a product decision, tracked in `HANDOFF.md`. Full detail, file:line evidence, and
+> backend/product asks live in `HANDOFF.md` and `mobile/README.md`'s "QA round 2" and "Follow-up
+> pass" notes; the companion `Test Documentation Statuses.md` has the fuller narrative for each
+> item. **Everything below is merged to `main`** (commit `0e46313`).
 
 **SHARED**
 
@@ -18,11 +20,13 @@
    vars, redirect URI, migration `0033`) — see `HANDOFF.md`.
 
 2. Log in Screen Android safe area insets. The screen and its content should be scalable and should not superimpose on the android devices with navigation button enabled. same also with the navigation dropdown from the top(the one showing wifi, battery,time etc.). The output I'm expecting is that the stuff in the screen should not exceed safe area insets and should be scalable in any android device screens, and that everything should be shown without having to scroll. Keep this consistent on every screen 
-   🟡 **Partially fixed.** QA round 2 fixed a real double-padding bug (every client tab screen was
-   getting the bottom inset applied twice) and two auth screens that ignored insets entirely.
-   **Still open, deferred:** ~30 other screen headers use a fixed estimate instead of the real
-   inset (a larger, separate pass), and "no scrolling on any screen" doesn't hold for long forms
-   like sign-up — raised as a product question in `HANDOFF.md`.
+   🟡 **Fixed in code, device check still owed.** QA round 2 fixed a real double-padding bug (every
+   client tab screen was getting the bottom inset applied twice) and two auth screens that ignored
+   insets entirely. A follow-up pass then replaced the fixed `Sizes.statusBarHeight` estimate on
+   all 29 remaining screen headers with the real, rotation-reactive safe-area inset
+   (`useHeaderTop()`). **Still open:** a real-device visual check (3-button nav, gesture nav, a
+   notched device) — not unit-testable — and "no scrolling on any screen" still doesn't hold for
+   long forms like sign-up, raised as a product question in `HANDOFF.md`.
 
 3. On the sign up page when signing up, there is no show password in both “password” and “confirm password” fields. On both homeowner and provider.  
    ✅ **Fixed** (`PasswordInput` component, both fields, both roles).
@@ -35,9 +39,10 @@
    confirm the live API matches.
 
 6. Tutorial for new users  
-   🟡 **Fixed, partial.** Onboarding slides exist per role. Still missing: a way to replay the
-   tutorial from Settings/Help, and it's device-local (resets on reinstall) rather than
-   account-level. Depth/scope is a product question, not bundled into this pass.
+   🟡 **Fixed, partial.** Onboarding slides exist per role, and a follow-up pass added a way to
+   replay them from Help & Support (both roles). Still missing: it's device-local (resets on
+   reinstall) rather than account-level. Depth/scope beyond that is a product question, not
+   bundled into this pass.
 
 7. Keyboard dismissal when tapping on outside input fields 
    ✅ **Fixed** for every gap identified this round: the Decline Booking, Withdraw (both roles), and
@@ -116,8 +121,11 @@
    Shared #11) and decluttered the Wallet screen (see item 14 below).
 
 7. When opening a notification that a SP has applied to the job, it should navigate to the Proposals screen.  
-   ✅ **Fixed** for the in-app notification list. 🔧 Tapping a **push** notification still doesn't
-   route anywhere — blocked on Firebase/FCM credentials (backend/infra), tracked in `HANDOFF.md`.
+   ✅ **Fixed** for the in-app notification list. A follow-up pass also built the tap-routing logic
+   for a **push** notification (extracted into a shared `resolveNotificationTarget` helper and
+   wired into `App.tsx`), but it's dormant: there's still nothing to route until a push token can
+   be obtained. 🔧 Still blocked on Firebase/FCM credentials (backend/infra) for that — tracked in
+   `HANDOFF.md` §4 — but no further mobile work is needed once that lands.
 
 8. In the proposals the homeowner should have access viewing the profile of the maestro provider, like a portfolio.  
    🟡 **Partially fixed.** Tapping a proposal opens the provider's profile with an ID-verified badge,
@@ -203,9 +211,10 @@
 7. In My work tab, inconsistent filtering is present which duplicates the job. For example, in the Applications filter, the current status on the job is “Hired” but the same job is also existing under the Active filter with the current job status as “Hiring Provider”.  
    ✅ **Fixed** — Hired proposals no longer appear under Applications, and Active only shows jobs
    actually assigned to the provider, so the duplication is structurally impossible now (a job can
-   only be assigned via an accepted application). One related, unfixed edge case: a **declined**
-   booking currently disappears from every My Work tab instead of showing as
-   Cancelled/Declined — noted as a follow-up in `HANDOFF.md`, not fixed this round.
+   only be assigned via an accepted application). The related edge case — a **declined** booking
+   disappearing from every My Work tab instead of showing as Cancelled — was fixed in the
+   follow-up pass: a 4th "Cancelled" tab now shows it, and its Job Detail screen shows a locked
+   "Booking Cancelled" row instead of a blank action bar.
 
 8. My Work tab \-\> Select a filter (other than Applications filter) \-\> Select a listed job in the filter \-\> Use the return button at the top of the Job Details Screen. After using the return button, it returns to the Applications filter instead of the selected filter before.  
    ✅ **Fixed** — the selected filter and scroll position are now retained.

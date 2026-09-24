@@ -13,13 +13,16 @@
 “Physical hardware” means an emulator can simulate inputs but cannot prove real camera/GPS behavior.  
 Important: missing backend deployment, test records, account states, or email services are not emulator limitations; they remain blockers even on a physical phone.
 
-> **2026-09-24 code-verification pass.** Every item below was re-checked directly against the code
-> (not re-run on device) on `fix/mobile-qa-round2`. Bracketed `[…]` notes are additions from that
-> pass: `[Correction]` marks a status here that didn't match the actual code; `[Fixed 2026-09-24]`
-> marks an item this pass closed. Full detail, file:line evidence and the backend/product items this
-> pass could not touch are in `HANDOFF.md`'s "QA round 2 backend asks" section and
-> `mobile/README.md`'s "QA round 2" note. Nothing below was re-verified on an emulator or device by
-> this pass — that step is still owed.
+> **2026-09-24 code-verification pass, updated later the same day with a follow-up pass.** Every
+> item below was re-checked directly against the code (not re-run on device) on
+> `fix/mobile-qa-round2`, now merged to `main`. Bracketed `[…]` notes are additions from that pass:
+> `[Correction]` marks a status here that didn't match the actual code; `[Fixed 2026-09-24]` marks
+> an item this pass closed. A same-day follow-up pass additionally closed four items previously
+> left deferred (declined-job visibility, tutorial replay, push-tap routing groundwork, header
+> inset refactor) — those notes are marked accordingly below. Full detail, file:line evidence and
+> the backend/product items neither pass could touch are in `HANDOFF.md` and `mobile/README.md`'s
+> "QA round 2" and "Follow-up pass" notes. Nothing below was re-verified on an emulator or device —
+> that step is still owed, and is called out per-item where it specifically applies.
 
 # **SHARED**
 
@@ -27,12 +30,14 @@ Important: missing backend deployment, test records, account states, or email se
 **Phone QA:** recommended with installed Chrome and a real Google account; emulator is still useful for reproducing it. Also needs a working auth configuration.  
 \#2 🟡 Safe-area handling improved, but full-screen coverage is still open.   
 **Phone QA:** recommended across real cutouts, status/navigation bars, gesture and 3-button navigation, and OEM layouts; emulator can simulate representative modes.  
-**[Correction: this was worse than 🟡.** Every client (homeowner) tab screen was getting the bottom inset applied twice — once by `BottomNavBar` itself, once by an unnecessary wrapping `ScreenFrame` — and the sign-up code-entry step and the Google role-selection screen's top edge ignored insets entirely. **[Fixed 2026-09-24]** all three. Still open: about 30 other screen headers use a fixed `Sizes.statusBarHeight` estimate instead of the real inset — a larger, separate pass, deliberately not attempted this round. "No scrolling on any screen" (part of the original ask) also doesn't hold for long forms like sign-up — flagged as a product question in `HANDOFF.md`, not fixed.]  
+**[Correction: this was worse than 🟡.** Every client (homeowner) tab screen was getting the bottom inset applied twice — once by `BottomNavBar` itself, once by an unnecessary wrapping `ScreenFrame` — and the sign-up code-entry step and the Google role-selection screen's top edge ignored insets entirely. **[Fixed 2026-09-24]** all three. **[Fixed 2026-09-24, follow-up pass]** the remaining 29 screen headers that used a fixed `Sizes.statusBarHeight` estimate instead of the real inset now use a new `useHeaderTop()` hook — real, rotation-reactive safe-area insets. Still open: a real-device visual check of that refactor (3-button nav, gesture nav, a notched device) — not emulator-provable. "No scrolling on any screen" (part of the original ask) also doesn't hold for long forms like sign-up — flagged as a product question in `HANDOFF.md`, not fixed.]  
 \#3 ✅ Show/hide password was checked on both signup password fields for both roles. **Emulator OK.**  
 \#4 ✅ Terms/privacy consent modal was checked. **Emulator OK.**  
 \#5 ✅ Duplicate-email message was checked after the signup attempt.   
 **Emulator OK;** use a disposable/test account for repeat runs.  
 \#6 🟡 New-user tutorial/onboarding screens exist and were partly reviewed; not every account state or first-run path was checked. **Emulator OK** with fresh-account fixtures.  
+**[Fixed 2026-09-24, follow-up pass]** a "View tutorial" row in Help & Support (both roles) now
+replays the onboarding slides on demand, closing the "no way to replay it" gap. **Emulator OK.**  
 \#7 🟡 Keyboard handling improved and selected forms were tested, but outside-tap dismissal is not proven on every input (some forms dismiss on drag).   
 **Phone QA:** recommended with the device’s actual keyboard and resize behavior; emulator covers a standard Android keyboard.  
 **[Fixed 2026-09-24]** for the remaining known gaps: the Decline Booking, Withdraw (both roles), and Add Money modals, the sign-up code-entry step, and the chat empty state now dismiss the keyboard on an outside tap. Real-device QA of the full matrix is still owed.]  
@@ -70,6 +75,10 @@ Important: missing backend deployment, test records, account states, or email se
 **Emulator OK** with safe test records; no real-money transaction is needed.  
 **[Fixed 2026-09-24]** two gaps found in code review: "Confirm Completion" (which releases escrow to the provider) fired immediately with no confirmation step — now gated behind a dialog naming the amount. The schedule fact now shows date **and** time, not date only.]  
 \#7 🟡 Provider-application notification routing to Proposals is present, but no application notification was available to tap.  
+**[Fixed 2026-09-24, code-only]** a follow-up pass built the equivalent routing for a tapped **push**
+notification (shared `resolveNotificationTarget` helper + `App.tsx` wiring), but it's dormant until
+a push token can be obtained — still blocked on Firebase/FCM (see `HANDOFF.md` §4). A dev-build
+manual tap test is owed once that unblocks; not reproducible on the emulator.  
 \#8 ⚠️ Provider details and recent-work information are implemented, but a real photo portfolio is still missing. Not hardware-dependent.  
 **[Confirmed: no portfolio table, bucket, or endpoint exists.** `BACKEND_SCHEMA.md` §14 explicitly defers it. Needs a product decision — see `HANDOFF.md` §4.]  
 \#9 🟡 Proposal-card chat-button removal is present, but proposal cards were unavailable for a full-flow check. Emulator OK with proposal data.  
@@ -124,7 +133,10 @@ Emulator OK with an active urgent-job fixture.
 **[Note: this list has no row for the "duplicate job across My Work filters" item from the original
 QA doc (a job showing as both "Hired" under Applications and "Hiring Provider" under Active). It was
 independently confirmed fixed in code this pass — Hired proposals are excluded from Applications,
-and Active only shows jobs actually assigned to the provider.]**
+and Active only shows jobs actually assigned to the provider. A related edge case found during that
+check — a declined/cancelled booking disappearing from every My Work tab instead of showing
+anywhere — was fixed in the same-day follow-up pass: a 4th "Cancelled" tab now shows it, and its
+Job Detail screen shows a locked "Booking Cancelled" row instead of a blank action bar.]**
 
 # **ADMIN**
 
