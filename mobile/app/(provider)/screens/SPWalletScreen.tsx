@@ -19,7 +19,8 @@ import React, { useState } from 'react';
 import { ActivityIndicator, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Banknote, Building2, Sparkles, WalletCards } from 'lucide-react-native';
-import { Sizes, Spacing, V6Colors, V6Radii, V6Shadows } from '../../../src/constants/theme';
+import { Spacing, V6Colors, V6Radii, V6Shadows } from '../../../src/constants/theme';
+import { useHeaderTop } from '../../../src/hooks/useHeaderTop';
 
 const C = V6Colors;
 import { useAuth } from '../../../src/context/AuthContext';
@@ -30,6 +31,7 @@ import WithdrawModal from '../../../src/components/WithdrawModal';
 import { showToast } from '../../../src/components/Toast';
 
 export default function SPWalletScreen() {
+  const headerTop = useHeaderTop();
   const { providerProfile } = useAuth();
   const { data, loading, error, reload } = useAsyncData(() => api.wallet(), [], 'sp-wallet');
   const transactions = data?.transactions ?? [];
@@ -58,7 +60,7 @@ export default function SPWalletScreen() {
   return (
     <View style={styles.screen}>
       {/* Header — matches .topbar (flat white) */}
-      <View style={styles.header}>
+      <View style={[styles.header, { paddingTop: headerTop }]}>
         <Text style={styles.headerTitle}>Wallet</Text>
       </View>
 
@@ -212,7 +214,6 @@ const styles = StyleSheet.create({
 
   header: {
     backgroundColor: C.white,
-    paddingTop: Sizes.statusBarHeight,
     paddingHorizontal: Spacing.screenH,
     paddingBottom: 12,
     borderBottomWidth: 1, borderBottomColor: '#edf1f4',

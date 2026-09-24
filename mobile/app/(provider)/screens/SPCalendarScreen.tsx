@@ -18,7 +18,8 @@ import React, { useMemo, useState } from 'react';
 import { ActivityIndicator, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { Calendar } from 'react-native-calendars';
 import { CalendarDays, UserRound } from 'lucide-react-native';
-import { Sizes, Spacing, V6Colors, V6Radii, V6Shadows } from '../../../src/constants/theme';
+import { Spacing, V6Colors, V6Radii, V6Shadows } from '../../../src/constants/theme';
+import { useHeaderTop } from '../../../src/hooks/useHeaderTop';
 
 const C = V6Colors;
 import { useAsyncData } from '../../../src/hooks/useAsyncData';
@@ -31,6 +32,7 @@ interface SPCalendarScreenProps {
 }
 
 export default function SPCalendarScreen({ onNavigate }: SPCalendarScreenProps) {
+  const headerTop = useHeaderTop();
   const todayKey = (() => {
     const d = new Date();
     return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
@@ -76,7 +78,7 @@ export default function SPCalendarScreen({ onNavigate }: SPCalendarScreenProps) 
   return (
     <View style={styles.screen}>
       {/* Header — matches .topbar (flat white) */}
-      <View style={styles.header}>
+      <View style={[styles.header, { paddingTop: headerTop }]}>
         <Text style={styles.headerTitle}>Calendar</Text>
       </View>
 
@@ -154,7 +156,6 @@ const styles = StyleSheet.create({
 
   header: {
     backgroundColor: C.white,
-    paddingTop: Sizes.statusBarHeight,
     paddingHorizontal: Spacing.screenH,
     paddingBottom: 12,
     borderBottomWidth: 1, borderBottomColor: '#edf1f4',

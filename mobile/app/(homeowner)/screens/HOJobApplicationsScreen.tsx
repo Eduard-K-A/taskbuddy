@@ -41,7 +41,8 @@ import {
   View,
 } from 'react-native';
 import { AlertCircle, ArrowLeft, ChevronRight, ShieldAlert, Star } from 'lucide-react-native';
-import { Sizes, Spacing, V6Colors } from '../../../src/constants/theme';
+import { Spacing, V6Colors } from '../../../src/constants/theme';
+import { useHeaderTop } from '../../../src/hooks/useHeaderTop';
 
 const C = V6Colors;
 import { useAsyncData } from '../../../src/hooks/useAsyncData';
@@ -63,6 +64,7 @@ export default function HOJobApplicationsScreen({
   onBack,
   onNavigate,
 }: HOJobApplicationsScreenProps) {
+  const headerTop = useHeaderTop();
   const { data: apps, loading, error, reload } = useAsyncData<JobApplication[]>(
     async () => {
       if (!jobId) throw new Error('No job selected.');
@@ -215,7 +217,7 @@ export default function HOJobApplicationsScreen({
   return (
     <View style={styles.screen}>
       {/* Header — matches .topbar (flat white) */}
-      <View style={styles.header}>
+      <View style={[styles.header, { paddingTop: headerTop }]}>
         {onBack && (
           <TouchableOpacity style={styles.backBtn} onPress={onBack} activeOpacity={0.8}>
             <ArrowLeft size={20} color={C.ink700} />
@@ -348,6 +350,7 @@ export default function HOJobApplicationsScreen({
         title="Reject this proposal?"
         message={`${confirmReject?.provider?.full_name ?? 'This provider'} will be told they weren't selected. You can't undo this.`}
         confirmLabel="Reject"
+        destructive
         onConfirm={() => {
           const app = confirmReject;
           setConfirmReject(null);
@@ -404,7 +407,6 @@ const styles = StyleSheet.create({
   header: {
     flexDirection: 'row', alignItems: 'center', gap: 12,
     backgroundColor: C.white,
-    paddingTop: Sizes.statusBarHeight,
     paddingHorizontal: Spacing.screenH,
     paddingBottom: 12,
     borderBottomWidth: 1, borderBottomColor: '#edf1f4',

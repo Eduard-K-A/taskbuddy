@@ -21,7 +21,8 @@ import {
   View,
 } from 'react-native';
 import { ArrowLeft, Star } from 'lucide-react-native';
-import { Sizes, Spacing, V6Colors, V6Radii, V6Shadows } from '../../../src/constants/theme';
+import { Spacing, V6Colors, V6Radii, V6Shadows } from '../../../src/constants/theme';
+import { useHeaderTop } from '../../../src/hooks/useHeaderTop';
 
 const C = V6Colors;
 import { api } from '../../../src/lib/api';
@@ -35,6 +36,7 @@ interface HOLeaveReviewScreenProps {
 }
 
 export default function HOLeaveReviewScreen({ jobId, onSubmitted, onBack }: HOLeaveReviewScreenProps) {
+  const headerTop = useHeaderTop();
   const [rating, setRating] = useState<number>(5);
   const [comment, setComment] = useState<string>('');
   const [busy, setBusy] = useState(false);
@@ -66,7 +68,7 @@ export default function HOLeaveReviewScreen({ jobId, onSubmitted, onBack }: HOLe
   return (
     <View style={styles.screen}>
       {/* Header — matches .topbar (flat white, icon back button) */}
-      <View style={styles.header}>
+      <View style={[styles.header, { paddingTop: headerTop }]}>
         {onBack && (
           <TouchableOpacity style={styles.backBtn} onPress={onBack} activeOpacity={0.8}>
             <ArrowLeft size={20} color={C.ink700} />
@@ -139,7 +141,6 @@ const styles = StyleSheet.create({
   header: {
     flexDirection: 'row', alignItems: 'center', gap: 12,
     backgroundColor: C.white,
-    paddingTop: Sizes.statusBarHeight,
     paddingHorizontal: Spacing.screenH,
     paddingBottom: 12,
     borderBottomWidth: 1, borderBottomColor: '#edf1f4',

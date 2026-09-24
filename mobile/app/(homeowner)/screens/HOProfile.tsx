@@ -30,7 +30,8 @@ import {
   Settings,
 } from 'lucide-react-native';
 import ConfirmationModal from '../../../src/components/ConfirmationModal';
-import { Sizes, Spacing, V6Colors, V6Radii, V6Shadows } from '../../../src/constants/theme';
+import { Spacing, V6Colors, V6Radii, V6Shadows } from '../../../src/constants/theme';
+import { useHeaderTop } from '../../../src/hooks/useHeaderTop';
 
 const C = V6Colors;
 import { HOScreen } from '../../../src/types/navigation';
@@ -53,6 +54,7 @@ interface ProfileProps {
 }
 
 export default function Profile({ onNavigate, onLogout, onBack }: ProfileProps) {
+  const headerTop = useHeaderTop(4);
   // Coming back from Settings/Edit Profile keeps the list where it was.
   const scroll = useRetainedScroll('ho.profile');
   const { profile } = useAuth();
@@ -79,10 +81,10 @@ export default function Profile({ onNavigate, onLogout, onBack }: ProfileProps) 
         colors={['#078eaa', '#0b7288']}
         start={{ x: 0.15, y: 0 }}
         end={{ x: 0.85, y: 1 }}
-        style={styles.hero}
+        style={[styles.hero, { paddingTop: headerTop }]}
       >
         <TouchableOpacity
-          style={styles.backBtn}
+          style={[styles.backBtn, { top: headerTop }]}
           onPress={onBack}
           activeOpacity={0.8}
           accessibilityLabel="Back to Home"
@@ -187,7 +189,6 @@ const styles = StyleSheet.create({
   screen: { flex: 1, backgroundColor: C.canvas },
 
   hero: {
-    paddingTop: Sizes.statusBarHeight + 4,
     paddingHorizontal: Spacing.screenH,
     paddingBottom: 26,
     borderBottomLeftRadius: 26,
@@ -196,7 +197,7 @@ const styles = StyleSheet.create({
     position: 'relative',
   },
   backBtn: {
-    position: 'absolute', top: Sizes.statusBarHeight + 4, left: Spacing.screenH,
+    position: 'absolute', left: Spacing.screenH,
     width: 38, height: 38, borderRadius: 12,
     backgroundColor: 'rgba(255,255,255,0.12)', borderWidth: 1, borderColor: 'rgba(255,255,255,0.14)',
     alignItems: 'center', justifyContent: 'center',

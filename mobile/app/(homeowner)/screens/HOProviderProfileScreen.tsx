@@ -26,7 +26,8 @@ import {
   View,
 } from 'react-native';
 import { ArrowLeft, BadgeCheck, CheckCircle2, MessageCircle, ShieldAlert, Star } from 'lucide-react-native';
-import { Spacing, Sizes, V6Colors } from '../../../src/constants/theme';
+import { Spacing, V6Colors } from '../../../src/constants/theme';
+import { useHeaderTop } from '../../../src/hooks/useHeaderTop';
 
 const C = V6Colors;
 import { useAsyncData } from '../../../src/hooks/useAsyncData';
@@ -47,6 +48,7 @@ export default function HOProviderProfileScreen({
   onBack,
   onNavigate,
 }: HOProviderProfileScreenProps) {
+  const headerTop = useHeaderTop();
   const { data, loading, error } = useAsyncData(async () => {
     const [provider, reviews, work] = await Promise.all([
       api.getProvider(id),
@@ -64,7 +66,7 @@ export default function HOProviderProfileScreen({
   return (
     <View style={styles.screen}>
       {/* Header — matches .topbar (flat white) */}
-      <View style={styles.header}>
+      <View style={[styles.header, { paddingTop: headerTop }]}>
         {onBack && (
           <TouchableOpacity style={styles.backBtn} onPress={onBack} activeOpacity={0.8}>
             <ArrowLeft size={20} color={C.ink700} />
@@ -182,7 +184,6 @@ const styles = StyleSheet.create({
   header: {
     flexDirection: 'row', alignItems: 'center', gap: 12,
     backgroundColor: C.white,
-    paddingTop: Sizes.statusBarHeight,
     paddingHorizontal: Spacing.screenH,
     paddingBottom: 12,
     borderBottomWidth: 1, borderBottomColor: '#edf1f4',

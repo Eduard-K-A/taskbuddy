@@ -11,13 +11,14 @@ import React, { useMemo, useState } from 'react';
 import { ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { Calendar } from 'react-native-calendars';
 import { CalendarDays, User } from 'lucide-react-native';
-import { Sizes, Spacing, V6Colors, V6Radii, V6Shadows } from '../../../src/constants/theme';
+import { Spacing, V6Colors, V6Radii, V6Shadows } from '../../../src/constants/theme';
 import { HOScreen } from '../../../src/types/navigation';
 import { useAsyncData } from '../../../src/hooks/useAsyncData';
 import { api } from '../../../src/lib/api';
 import { jobStatusMeta } from '../../../src/lib/format';
 import ScreenSkeleton from '../../../src/components/ScreenSkeleton';
 import JobCard from '../../../src/components/JobCard';
+import { useHeaderTop } from '../../../src/hooks/useHeaderTop';
 
 const C = V6Colors;
 
@@ -26,6 +27,7 @@ interface HOCalendarScreenProps {
 }
 
 export default function HOCalendarScreen({ onNavigate }: HOCalendarScreenProps) {
+  const headerTop = useHeaderTop();
   const todayKey = (() => {
     const d = new Date();
     return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
@@ -74,7 +76,7 @@ export default function HOCalendarScreen({ onNavigate }: HOCalendarScreenProps) 
   return (
     <View style={styles.screen}>
       {/* Header — matches .topbar */}
-      <View style={styles.header}>
+      <View style={[styles.header, { paddingTop: headerTop }]}>
         <Text style={styles.headerTitle}>Calendar</Text>
       </View>
 
@@ -151,7 +153,6 @@ const styles = StyleSheet.create({
 
   header: {
     backgroundColor: C.white,
-    paddingTop: Sizes.statusBarHeight,
     paddingHorizontal: Spacing.screenH,
     paddingBottom: 12,
     borderBottomWidth: 1,

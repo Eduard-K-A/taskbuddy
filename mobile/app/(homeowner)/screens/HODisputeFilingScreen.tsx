@@ -16,11 +16,12 @@ import React, { useCallback, useState } from 'react';
 import { ActivityIndicator, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
 import { ArrowLeft } from 'lucide-react-native';
 import ConfirmationModal from '../../../src/components/ConfirmationModal';
-import { Sizes, Spacing, V6Colors, V6Radii, V6Shadows } from '../../../src/constants/theme';
+import { Spacing, V6Colors, V6Radii, V6Shadows } from '../../../src/constants/theme';
 
 const C = V6Colors;
 import { api } from '../../../src/lib/api';
 import { useAsyncData } from '../../../src/hooks/useAsyncData';
+import { useHeaderTop } from '../../../src/hooks/useHeaderTop';
 
 interface HODisputeFilingScreenProps {
   jobId: string | null;
@@ -31,6 +32,7 @@ interface HODisputeFilingScreenProps {
 const REASONS = ['Work not completed', 'Work quality issue', 'Provider did not arrive', 'Payment issue', 'Other'];
 
 export default function HODisputeFilingScreen({ jobId, onBack, onSubmitted }: HODisputeFilingScreenProps) {
+  const headerTop = useHeaderTop();
   const [reason, setReason] = useState(REASONS[0]);
   const [details, setDetails] = useState('');
   const [detailsFocused, setDetailsFocused] = useState(false);
@@ -70,7 +72,7 @@ export default function HODisputeFilingScreen({ jobId, onBack, onSubmitted }: HO
   return (
     <View style={styles.screen}>
       {/* Header — matches .topbar (flat white, not a colored hero) */}
-      <View style={styles.header}>
+      <View style={[styles.header, { paddingTop: headerTop }]}>
         <TouchableOpacity style={styles.backButton} onPress={onBack} activeOpacity={0.8}>
           <ArrowLeft size={20} color={C.ink700} />
         </TouchableOpacity>
@@ -144,7 +146,6 @@ const styles = StyleSheet.create({
   header: {
     flexDirection: 'row', alignItems: 'center', gap: 12,
     backgroundColor: C.white,
-    paddingTop: Sizes.statusBarHeight,
     paddingHorizontal: Spacing.screenH,
     paddingBottom: 12,
     borderBottomWidth: 1, borderBottomColor: '#edf1f4',

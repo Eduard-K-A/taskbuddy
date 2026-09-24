@@ -18,7 +18,8 @@ import {
   View,
 } from 'react-native';
 import { ArrowLeft, BadgeCheck, Clock, XCircle } from 'lucide-react-native';
-import { Sizes, Spacing, V6Colors, V6Radii } from '../../../src/constants/theme';
+import { Spacing, V6Colors, V6Radii } from '../../../src/constants/theme';
+import { useHeaderTop } from '../../../src/hooks/useHeaderTop';
 import { useAuth } from '../../../src/context/AuthContext';
 import { useAsyncData } from '../../../src/hooks/useAsyncData';
 import { api, type SkillRequest, type SkillRequestType } from '../../../src/lib/api';
@@ -47,6 +48,7 @@ interface SPSkillRequestScreenProps {
 }
 
 export default function SPSkillRequestScreen({ onBack }: SPSkillRequestScreenProps) {
+  const headerTop = useHeaderTop();
   const { providerProfile, refreshProfile } = useAuth();
   const categories = useAsyncData(() => api.categories(), []);
   const requests = useAsyncData(() => api.mySkillRequests(), []);
@@ -103,7 +105,7 @@ export default function SPSkillRequestScreen({ onBack }: SPSkillRequestScreenPro
 
   return (
     <View style={styles.screen}>
-      <View style={styles.header}>
+      <View style={[styles.header, { paddingTop: headerTop }]}>
         <TouchableOpacity style={styles.backBtn} onPress={onBack} activeOpacity={0.8} accessibilityLabel="Back">
           <ArrowLeft size={20} color={C.ink700} />
         </TouchableOpacity>
@@ -264,7 +266,6 @@ const styles = StyleSheet.create({
   header: {
     flexDirection: 'row', alignItems: 'center', gap: 12,
     backgroundColor: C.white,
-    paddingTop: Sizes.statusBarHeight,
     paddingHorizontal: Spacing.screenH,
     paddingBottom: 12,
     borderBottomWidth: 1, borderBottomColor: C.hairline,

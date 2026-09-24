@@ -22,11 +22,12 @@ import { ArrowLeft } from 'lucide-react-native';
 import AvatarPicker from '../../../src/components/AvatarPicker';
 import ConfirmationModal from '../../../src/components/ConfirmationModal';
 import AddressField from '../../../src/components/AddressField';
-import { Sizes, Spacing, V6Colors, V6Radii, V6Shadows } from '../../../src/constants/theme';
+import { Spacing, V6Colors, V6Radii, V6Shadows } from '../../../src/constants/theme';
 
 const C = V6Colors;
 import { useAuth } from '../../../src/context/AuthContext';
 import { api } from '../../../src/lib/api';
+import { useHeaderTop } from '../../../src/hooks/useHeaderTop';
 
 interface HOEditProfileScreenProps {
   onBack: () => void;
@@ -83,6 +84,7 @@ function FormField({
 }
 
 export default function HOEditProfileScreen({ onBack, onSave }: HOEditProfileScreenProps) {
+  const headerTop = useHeaderTop();
   const { profile, refreshProfile } = useAuth();
   const [name, setName] = useState(profile?.full_name ?? '');
   const [phone, setPhone] = useState(profile?.phone ?? '');
@@ -132,7 +134,7 @@ export default function HOEditProfileScreen({ onBack, onSave }: HOEditProfileScr
   return (
     <View style={styles.screen}>
       {/* Header — matches .topbar (flat white, not a colored hero) */}
-      <View style={styles.header}>
+      <View style={[styles.header, { paddingTop: headerTop }]}>
         <TouchableOpacity style={styles.backBtn} onPress={onBack} activeOpacity={0.8}>
           <ArrowLeft size={20} color={C.ink700} />
         </TouchableOpacity>
@@ -203,7 +205,6 @@ const styles = StyleSheet.create({
   header: {
     flexDirection: 'row', alignItems: 'center', gap: 12,
     backgroundColor: C.white,
-    paddingTop: Sizes.statusBarHeight,
     paddingHorizontal: Spacing.screenH,
     paddingBottom: 12,
     borderBottomWidth: 1, borderBottomColor: '#edf1f4',

@@ -13,10 +13,11 @@
 import React from 'react';
 import { ActivityIndicator, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { ArrowLeft, CheckCircle2, CircleDashed, CircleDot } from 'lucide-react-native';
-import { Sizes, Spacing, V6Colors, V6Radii, V6Shadows } from '../../../src/constants/theme';
+import { Spacing, V6Colors, V6Radii, V6Shadows } from '../../../src/constants/theme';
 
 const C = V6Colors;
 import { useAsyncData } from '../../../src/hooks/useAsyncData';
+import { useHeaderTop } from '../../../src/hooks/useHeaderTop';
 import { api, Dispute } from '../../../src/lib/api';
 import { shortDate, timeOfDay } from '../../../src/lib/format';
 
@@ -76,6 +77,7 @@ function buildSteps(dispute: Dispute): TimelineStep[] {
 }
 
 export default function HODisputeStatusScreen({ jobId, onBack }: HODisputeStatusScreenProps) {
+  const headerTop = useHeaderTop();
   const { data: dispute, loading, error } = useAsyncData(
     () => (jobId ? api.jobDispute(jobId) : Promise.resolve(null)),
     [jobId],
@@ -85,7 +87,7 @@ export default function HODisputeStatusScreen({ jobId, onBack }: HODisputeStatus
 
   return (
     <View style={styles.screen}>
-      <View style={styles.header}>
+      <View style={[styles.header, { paddingTop: headerTop }]}>
         <TouchableOpacity style={styles.backButton} onPress={onBack} activeOpacity={0.8}>
           <ArrowLeft size={20} color={C.ink700} />
         </TouchableOpacity>
@@ -162,7 +164,6 @@ const styles = StyleSheet.create({
   header: {
     flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
     backgroundColor: C.white,
-    paddingTop: Sizes.statusBarHeight,
     paddingHorizontal: Spacing.screenH,
     paddingBottom: 12,
     borderBottomWidth: 1, borderBottomColor: '#edf1f4',

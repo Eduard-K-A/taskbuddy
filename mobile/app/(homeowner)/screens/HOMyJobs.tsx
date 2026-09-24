@@ -25,7 +25,8 @@ import {
   View,
 } from 'react-native';
 import { ClipboardList, Clock, Plus, User } from 'lucide-react-native';
-import { Sizes, Spacing, V6Colors } from '../../../src/constants/theme';
+import { Spacing, V6Colors } from '../../../src/constants/theme';
+import { useHeaderTop } from '../../../src/hooks/useHeaderTop';
 import { HOScreen } from '../../../src/types/navigation';
 import { useAsyncData } from '../../../src/hooks/useAsyncData';
 import { api } from '../../../src/lib/api';
@@ -61,6 +62,7 @@ interface MyJobsProps {
 }
 
 export default function MyJobs({ onNavigate }: MyJobsProps) {
+  const headerTop = useHeaderTop();
   const [activeFilter, setActiveFilter] = useRetainedState<FilterTab>('ho.myJobs.filter', 'All');
   const scroll = useRetainedScroll(`ho.myJobs.${activeFilter}`);
   const { data, loading, error } = useAsyncData(() => api.myJobs(), [], 'ho-jobs');
@@ -73,7 +75,7 @@ export default function MyJobs({ onNavigate }: MyJobsProps) {
   return (
     <View style={styles.screen}>
       {/* Header — matches .topbar */}
-      <View style={styles.header}>
+      <View style={[styles.header, { paddingTop: headerTop }]}>
         <View style={styles.headerTopRow}>
           <Text style={styles.headerTitle}>My Jobs</Text>
           <TouchableOpacity
@@ -165,7 +167,6 @@ const styles = StyleSheet.create({
 
   header: {
     backgroundColor: C.white,
-    paddingTop: Sizes.statusBarHeight,
     paddingHorizontal: Spacing.screenH,
     paddingBottom: 12,
     borderBottomWidth: 1,

@@ -37,7 +37,8 @@ import {
   Moon,
   Trash2,
 } from 'lucide-react-native';
-import { Sizes, Spacing, V6Colors } from '../../../src/constants/theme';
+import { Spacing, V6Colors } from '../../../src/constants/theme';
+import { useHeaderTop } from '../../../src/hooks/useHeaderTop';
 
 const C = V6Colors;
 import DeleteAccountModal from '../../../src/components/DeleteAccountModal';
@@ -52,6 +53,7 @@ interface SPSettingsScreenProps {
 }
 
 export default function SPSettingsScreen({ onBack, onLogout }: SPSettingsScreenProps) {
+  const headerTop = useHeaderTop();
   const { flags, setFlag, loading: settingsLoading, error: settingsError } = useSettings();
 
   const [showPasswordModal, setShowPasswordModal] = useState(false);
@@ -72,7 +74,7 @@ export default function SPSettingsScreen({ onBack, onLogout }: SPSettingsScreenP
   return (
     <View style={styles.screen}>
       {/* Header — matches .topbar (flat white, not a colored hero) */}
-      <View style={styles.header}>
+      <View style={[styles.header, { paddingTop: headerTop }]}>
         <TouchableOpacity style={styles.backBtn} onPress={onBack} activeOpacity={0.8}>
           <ArrowLeft size={20} color={C.ink700} />
         </TouchableOpacity>
@@ -202,7 +204,6 @@ const styles = StyleSheet.create({
   header: {
     flexDirection: 'row', alignItems: 'center', gap: 12,
     backgroundColor: C.white,
-    paddingTop: Sizes.statusBarHeight,
     paddingHorizontal: Spacing.screenH,
     paddingBottom: 12,
     borderBottomWidth: 1, borderBottomColor: '#edf1f4',

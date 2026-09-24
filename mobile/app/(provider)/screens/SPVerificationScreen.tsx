@@ -56,7 +56,8 @@ import {
 import { api, ApiError } from '../../../src/lib/api';
 import { useAsyncData } from '../../../src/hooks/useAsyncData';
 import { shortDate } from '../../../src/lib/format';
-import { Sizes, Spacing, V6Colors, V6Radii, V6Shadows } from '../../../src/constants/theme';
+import { Spacing, V6Colors, V6Radii, V6Shadows } from '../../../src/constants/theme';
+import { useHeaderTop } from '../../../src/hooks/useHeaderTop';
 import { requestAppPermission } from '../../../src/lib/permissions';
 
 /** The IDs we accept, in the order most providers are likely to have them. */
@@ -103,6 +104,7 @@ interface SPVerificationScreenProps {
 type Slot = 'id' | 'selfie';
 
 export default function SPVerificationScreen({ onBack, onVerified }: SPVerificationScreenProps) {
+  const headerTop = useHeaderTop();
   const [step, setStep] = useState(1);
   const [documentType, setDocumentType] = useState<DocumentType | null>(null);
   const [idAsset, setIdAsset] = useState<ImagePicker.ImagePickerAsset | null>(null);
@@ -322,7 +324,7 @@ export default function SPVerificationScreen({ onBack, onVerified }: SPVerificat
 
   return (
     <View style={styles.screen}>
-      <View style={styles.header}>
+      <View style={[styles.header, { paddingTop: headerTop }]}>
         <TouchableOpacity style={styles.backButton} onPress={onBack} activeOpacity={0.8}>
           <ArrowLeft size={20} color={Colors.ink700} />
         </TouchableOpacity>
@@ -545,7 +547,6 @@ const styles = StyleSheet.create({
   header: {
     flexDirection: 'row', alignItems: 'center', gap: 12,
     backgroundColor: Colors.white,
-    paddingTop: Sizes.statusBarHeight,
     paddingHorizontal: Spacing.screenH,
     paddingBottom: 12,
     borderBottomWidth: 1, borderBottomColor: '#edf1f4',
