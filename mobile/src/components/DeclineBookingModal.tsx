@@ -16,6 +16,7 @@
 import React, { useEffect, useState } from 'react';
 import {
   ActivityIndicator,
+  Keyboard,
   Modal,
   Pressable,
   StyleSheet,
@@ -72,7 +73,12 @@ export default function DeclineBookingModal({
       <Pressable style={styles.overlay} onPress={onCancel} accessible={false}>
         <Pressable
           style={styles.dialog}
-          onPress={(event) => event.stopPropagation()}
+          testID="decline-dialog"
+          // Taps on the dialog's empty space close the keyboard, not the dialog.
+          onPress={(event) => {
+            event.stopPropagation();
+            Keyboard.dismiss();
+          }}
           accessibilityViewIsModal
         >
           <View style={styles.headerRow}>

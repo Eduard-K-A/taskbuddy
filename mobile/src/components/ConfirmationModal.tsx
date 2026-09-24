@@ -17,13 +17,15 @@ interface ConfirmationModalProps {
   confirmLabel?: string;
   cancelLabel?: string;
   busy?: boolean;
+  /** Red confirm button, for actions that discard or reject something. */
+  destructive?: boolean;
   onConfirm: () => void;
   onCancel: () => void;
 }
 
 /** Reusable confirmation dialog for actions that require an explicit user choice. */
 export default function ConfirmationModal({
-  visible, title, message, confirmLabel = 'Confirm', cancelLabel = 'Cancel', busy = false, onConfirm, onCancel,
+  visible, title, message, confirmLabel = 'Confirm', cancelLabel = 'Cancel', busy = false, destructive = false, onConfirm, onCancel,
 }: ConfirmationModalProps) {
   return (
     <Modal visible={visible} transparent animationType="fade" onRequestClose={busy ? undefined : onCancel}>
@@ -48,7 +50,7 @@ export default function ConfirmationModal({
               <Text style={styles.cancelText}>{cancelLabel}</Text>
             </TouchableOpacity>
             <TouchableOpacity
-              style={styles.confirmButton}
+              style={[styles.confirmButton, destructive && styles.confirmButtonDestructive]}
               onPress={onConfirm}
               disabled={busy}
               activeOpacity={0.85}
@@ -80,6 +82,7 @@ const styles = StyleSheet.create({
     flex: 1, alignItems: 'center', justifyContent: 'center', minHeight: 42,
     backgroundColor: Colors.brandTeal, borderRadius: 10, paddingHorizontal: 12, paddingVertical: 9,
   },
+  confirmButtonDestructive: { backgroundColor: Colors.red700 },
   cancelText: { color: Colors.slate, fontSize: 14.5, fontWeight: '700', fontFamily: 'Inter', textAlign: 'center' },
   confirmText: { color: Colors.white, fontSize: 14.5, fontWeight: '700', fontFamily: 'Inter', textAlign: 'center' },
 });

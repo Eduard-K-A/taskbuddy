@@ -33,6 +33,7 @@ import {
   Text,
   TextInput,
   TouchableOpacity,
+  TouchableWithoutFeedback,
   View,
 } from 'react-native';
 import { AlertCircle, ArrowLeft, Check, ChevronDown, MailCheck } from 'lucide-react-native';
@@ -94,6 +95,8 @@ interface RegisterScreenProps {
 
 interface InputProps {
   label: string;
+  /** Shows a red asterisk. Only on fields the Create Account button actually checks. */
+  required?: boolean;
   placeholder: string;
   value: string;
   onChangeText: (v: string) => void;
@@ -111,13 +114,16 @@ interface InputProps {
 }
 
 function FormInput({
-  label, placeholder, value, onChangeText,
+  label, required, placeholder, value, onChangeText,
   secureTextEntry, keyboardType, error, testID,
 }: InputProps) {
   const [focused, setFocused] = useState(false);
   return (
     <View style={styles.inputGroup}>
-      <Text style={styles.inputLabel}>{label}</Text>
+      <Text style={styles.inputLabel}>
+        {label}
+        {required && <Text style={styles.requiredAsterisk}> *</Text>}
+      </Text>
       {secureTextEntry ? (
         <PasswordInput
           containerStyle={[styles.inputBox, focused && styles.inputBoxFocused, error ? styles.inputBoxError : undefined]}
@@ -399,8 +405,14 @@ export default function RegisterScreen({ onRegister, onLogin, onGoogleSignIn }: 
 
   if (confirmationSent) {
     return (
+      <TouchableWithoutFeedback onPress={Keyboard.dismiss} accessible={false}>
       <View style={styles.screen}>
-        <View style={styles.confirmWrap}>
+        <View
+          style={[
+            styles.confirmWrap,
+            { paddingTop: layout.paddingTop, paddingBottom: layout.paddingBottom },
+          ]}
+        >
           <View style={styles.confirmCard}>
             <View style={styles.confirmIcon}>
               <MailCheck size={35} color={C.brandTeal} />
@@ -462,6 +474,7 @@ export default function RegisterScreen({ onRegister, onLogin, onGoogleSignIn }: 
           </View>
         </View>
       </View>
+      </TouchableWithoutFeedback>
     );
   }
 
@@ -524,6 +537,7 @@ export default function RegisterScreen({ onRegister, onLogin, onGoogleSignIn }: 
             {/* Shared fields */}
             <FormInput
               label="Full Name"
+              required
               placeholder="Alex Chen"
               testID="input-name"
               value={name}
@@ -532,6 +546,7 @@ export default function RegisterScreen({ onRegister, onLogin, onGoogleSignIn }: 
             />
             <FormInput
               label="Email Address"
+              required
               placeholder="alex@example.com"
               testID="input-email"
               value={email}
@@ -541,6 +556,7 @@ export default function RegisterScreen({ onRegister, onLogin, onGoogleSignIn }: 
             />
             <FormInput
               label="Password"
+              required
               placeholder="••••••••"
               testID="input-password"
               value={password}
@@ -550,6 +566,7 @@ export default function RegisterScreen({ onRegister, onLogin, onGoogleSignIn }: 
             />
             <FormInput
               label="Confirm Password"
+              required
               placeholder="••••••••"
               testID="input-confirm-password"
               value={confirmPassword}
@@ -561,7 +578,10 @@ export default function RegisterScreen({ onRegister, onLogin, onGoogleSignIn }: 
             {/* SP-only: skill category */}
             {role === 'provider' && (
               <View style={styles.inputGroup}>
-                <Text style={styles.inputLabel}>Skill Category</Text>
+                <Text style={styles.inputLabel}>
+                  Skill Category
+                  <Text style={styles.requiredAsterisk}> *</Text>
+                </Text>
                 <TouchableOpacity
                   style={[
                     styles.inputBox,

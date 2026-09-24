@@ -70,7 +70,7 @@ export default function GoogleRoleSelectionScreen({
       {/* Teal header accent */}
       <View style={styles.headerAccent} />
 
-      <View style={styles.content}>
+      <View style={[styles.content, { paddingTop: layout.paddingTop }]}>
         {/* Title block */}
         <View style={styles.titleBlock}>
           <Text style={styles.welcomeLabel}>Welcome to TaskBuddy</Text>
@@ -153,7 +153,7 @@ const styles = StyleSheet.create({
   content: {
     flex: 1,
     paddingHorizontal: 24,
-    paddingTop: 32,
+    // paddingTop overridden inline with layout.paddingTop (insets.top-based).
     paddingBottom: 16,
     justifyContent: 'center',
   },

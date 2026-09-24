@@ -18,6 +18,12 @@ interface AsyncState<T> {
  */
 const cache = new Map<string, unknown>();
 
+/** Test-only: clears the cross-mount cache so tests don't leak state between
+ * `it()` blocks that share a module instance. Not used by app code. */
+export function clearAsyncDataCache() {
+  cache.clear();
+}
+
 /**
  * Runs an async fetcher on mount (and whenever `deps` change), exposing
  * loading / error / data plus a `reload`. Keeps screen code declarative and

@@ -27,8 +27,6 @@ export interface AcceptLocation {
 interface AcceptBookingModalProps {
   visible: boolean;
   jobTitle?: string;
-  /** The provider's saved address, offered as a starting point. */
-  defaultAddress?: string | null;
   busy?: boolean;
   error?: string | null;
   onConfirm: (location: AcceptLocation) => void;
@@ -39,9 +37,13 @@ interface AcceptBookingModalProps {
  * Accepting a booking asks where the provider is right now. Their profile
  * address is where they're based, not necessarily where they'll set out
  * from today, and the client should see a real distance.
+ *
+ * Starts empty rather than pre-filled with the profile address (QA #12):
+ * pre-filling defeated the point of asking, since tapping Accept without
+ * editing sent the home address right back.
  */
 export default function AcceptBookingModal({
-  visible, jobTitle, defaultAddress, busy = false, error, onConfirm, onCancel,
+  visible, jobTitle, busy = false, error, onConfirm, onCancel,
 }: AcceptBookingModalProps) {
   const [address, setAddress] = useState('');
   const [resolved, setResolved] = useState<GeocodedAddress | null>(null);
@@ -50,11 +52,11 @@ export default function AcceptBookingModal({
 
   useEffect(() => {
     if (visible) {
-      setAddress(defaultAddress ?? '');
+      setAddress('');
       setResolved(null);
       setLocalError(null);
     }
-  }, [visible, defaultAddress]);
+  }, [visible]);
 
   const confirm = async () => {
     const text = address.trim();

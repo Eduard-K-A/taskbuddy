@@ -646,6 +646,14 @@ interface RequestOptions {
   method?: string;
   body?: unknown;
   accessToken?: string;
+  /**
+   * Skip the refresh-and-retry-once on a 401. For endpoints where a 401 means
+   * "the credential you sent was wrong" rather than "your session expired" —
+   * e.g. change-password's current-password check — refreshing and retrying
+   * re-checks the same wrong password twice and burns a token refresh for
+   * nothing (QA #10).
+   */
+  skipRefreshOn401?: boolean;
 }
 
 async function rawRequest<T>(
@@ -731,7 +739,7 @@ async function authRequest<T>(
   try {
     return await rawRequest<T>(path, { ...options, accessToken: token ?? undefined });
   } catch (err) {
-    if (err instanceof ApiError && err.status === 401) {
+    if (err instanceof ApiError && err.status === 401 && !options.skipRefreshOn401) {
       const refreshed = await refreshAccessToken();
       if (refreshed) {
         return rawRequest<T>(path, { ...options, accessToken: refreshed });
@@ -836,11 +844,44 @@ export const api = {
     return request<MeResponse>('/auth/me', { accessToken });
   },
 
-  changePassword(input: { current_password: string; new_password: string }) {
-    return authRequest<{ success: boolean }>('/auth/change-password', {
-      method: 'POST',
-      body: input,
-    });
+  async changePassword(input: { current_password: string; new_password: string }) {
+    // A 401 here has two unrelated causes that the generic retry-on-401
+    // can't tell apart: a wrong current password (in which case refreshing
+    // and retrying just re-checks the same wrong password a second time —
+    // QA #10) or a genuinely expired session (in which case the old
+    // behavior of silently refreshing and retrying is exactly right, and
+    // skipping it surfaces a confusing raw error instead). The backend
+    // distinguishes them by message today — JwtAuthGuard rejects an
+    // expired/invalid token with 'Invalid or expired token' before this
+    // route's own logic ever runs; only a real wrong-password re-auth
+    // failure throws 'Current password is incorrect'
+    // (backend/src/auth/auth.service.ts). Matching on that message is
+    // fragile against backend wording changes — HANDOFF.md §3 already asks
+    // for a stable status code/`code` field to replace this.
+    const path = '/auth/change-password';
+    try {
+      return await authRequest<{ success: boolean }>(path, {
+        method: 'POST',
+        body: input,
+        skipRefreshOn401: true,
+      });
+    } catch (err) {
+      if (
+        err instanceof ApiError &&
+        err.status === 401 &&
+        err.message !== 'Current password is incorrect'
+      ) {
+        const refreshed = await refreshAccessToken();
+        if (refreshed) {
+          return rawRequest<{ success: boolean }>(path, {
+            method: 'POST',
+            body: input,
+            accessToken: refreshed,
+          });
+        }
+      }
+      throw err;
+    }
   },
 
   /**

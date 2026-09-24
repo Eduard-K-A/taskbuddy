@@ -24,7 +24,10 @@
 import React, { useState } from 'react';
 import {
   ActivityIndicator,
+  Keyboard,
+  KeyboardAvoidingView,
   Modal,
+  Platform,
   Pressable,
   StyleSheet,
   Text,
@@ -91,10 +94,16 @@ export default function WithdrawModal({
 
   return (
     <Modal visible={visible} transparent animationType="fade" onRequestClose={close}>
-      <Pressable style={styles.backdrop} onPress={close} accessible={false}>
-        <Pressable
+      <KeyboardAvoidingView style={styles.flex} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
+        <Pressable style={styles.backdrop} onPress={close} accessible={false}>
+          <Pressable
           style={styles.card}
-          onPress={(event) => event.stopPropagation()}
+          testID="withdraw-dialog"
+          // Taps on the card's empty space close the keyboard, not the modal.
+          onPress={(event) => {
+            event.stopPropagation();
+            Keyboard.dismiss();
+          }}
           accessibilityViewIsModal
         >
           <Text style={styles.title} accessibilityRole="header">Withdraw Funds</Text>
@@ -163,13 +172,15 @@ export default function WithdrawModal({
               )}
             </Pressable>
           </View>
+          </Pressable>
         </Pressable>
-      </Pressable>
+      </KeyboardAvoidingView>
     </Modal>
   );
 }
 
 const styles = StyleSheet.create({
+  flex: { flex: 1 },
   backdrop: {
     flex: 1,
     backgroundColor: 'rgba(15,23,42,0.5)',
