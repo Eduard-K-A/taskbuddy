@@ -46,7 +46,8 @@ import {
   ShieldCheck,
 } from 'lucide-react-native';
 import { CalendarDays } from 'lucide-react-native';
-import { Sizes, Spacing, V6Colors, V6Radii } from '../../../src/constants/theme';
+import { Spacing, V6Colors, V6Radii } from '../../../src/constants/theme';
+import { useHeaderTop } from '../../../src/hooks/useHeaderTop';
 
 const C = V6Colors;
 import { SPScreen } from '../../../src/types/navigation';
@@ -78,12 +79,13 @@ function sortedTasks(job: Job | null): JobTask[] {
 }
 
 export default function SPJobDetailScreen({ jobId, onBack, onNavigate }: SPJobDetailScreenProps) {
+  const headerTop = useHeaderTop();
   const { profile, isVerified, refreshProfile } = useAuth();
   const { data: job, loading, error, reload } = useAsyncData(() => {
     if (!jobId) return Promise.reject(new Error('No job selected.'));
     return api.getJob(jobId);
   }, [jobId]);
-  const { data: myApps } = useAsyncData(
+  const { data: myApps, reload: reloadApps } = useAsyncData(
     () => api.myApplications() as Promise<MyApplication[]>,
     [],
     'sp-applications',
@@ -104,6 +106,7 @@ export default function SPJobDetailScreen({ jobId, onBack, onNavigate }: SPJobDe
   const isConfirmed = isAssignedToMe && job?.status === 'confirmed';
   const isWorking = isAssignedToMe && job?.status === 'in_progress';
   const isDone = isAssignedToMe && job?.status === 'completed';
+  const isCancelled = isAssignedToMe && job?.status === 'cancelled';
   const canApply = job && ['open', 'recommending'].includes(job.status) && !isAssignedToMe && !myApplication;
   const urgent = job?.urgency === 'urgent';
 
@@ -146,6 +149,10 @@ export default function SPJobDetailScreen({ jobId, onBack, onNavigate }: SPJobDe
       setProposalOpen(false);
       showToast('Proposal sent', 'success');
       reload();
+      // Without this, the cached `myApps` list (shared with My Work via the
+      // 'sp-applications' cache key) still says "no application here", so
+      // Submit Proposal stays visible and a second tap 400s as a duplicate.
+      reloadApps();
     } catch (e) {
       setActionError(errorMessage(e));
       if (e instanceof ApiError && e.code === 'verification_required') {
@@ -206,13 +213,14 @@ export default function SPJobDetailScreen({ jobId, onBack, onNavigate }: SPJobDe
     if (isConfirmed) return 'CONFIRMED BOOKING';
     if (isWorking) return 'WORK IN PROGRESS';
     if (isDone) return 'COMPLETED JOB';
+    if (isCancelled) return 'CANCELLED BOOKING';
     return `${(job?.service_categories?.name ?? 'JOB').toUpperCase()} OPPORTUNITY`;
   };
 
   return (
     <View style={styles.screen}>
       {/* Header — matches .topbar (flat white) */}
-      <View style={styles.header}>
+      <View style={[styles.header, { paddingTop: headerTop }]}>
         <TouchableOpacity style={styles.backBtn} onPress={onBack} activeOpacity={0.8}>
           <ArrowLeft size={20} color={C.ink700} />
         </TouchableOpacity>
@@ -402,6 +410,11 @@ export default function SPJobDetailScreen({ jobId, onBack, onNavigate }: SPJobDe
                 <Text style={styles.lockedBtnText}>Job Completed</Text>
               </View>
             )}
+            {isCancelled && (
+              <View style={styles.lockedBtn}>
+                <Text style={styles.lockedBtnText}>Booking Cancelled</Text>
+              </View>
+            )}
 
             {!isAssignedToMe && myApplication && (
               <View style={styles.lockedBtn}>
@@ -478,7 +491,6 @@ export default function SPJobDetailScreen({ jobId, onBack, onNavigate }: SPJobDe
       <AcceptBookingModal
         visible={acceptOpen}
         jobTitle={job?.title}
-        defaultAddress={profile?.address}
         busy={busy}
         error={acceptOpen ? actionError : null}
         onConfirm={(location) => void confirmAccept(location)}
@@ -508,7 +520,6 @@ const styles = StyleSheet.create({
   header: {
     flexDirection: 'row', alignItems: 'center', gap: 12,
     backgroundColor: C.white,
-    paddingTop: Sizes.statusBarHeight,
     paddingHorizontal: Spacing.screenH,
     paddingBottom: 12,
     borderBottomWidth: 1, borderBottomColor: '#edf1f4',

@@ -14,7 +14,9 @@
 import React, { useState } from 'react';
 import {
   ActivityIndicator,
+  Keyboard,
   Modal,
+  Pressable,
   ScrollView,
   StyleSheet,
   Text,
@@ -33,7 +35,8 @@ import {
 } from 'lucide-react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import * as AuthSession from 'expo-auth-session';
-import { Sizes, Spacing, V6Colors, V6Radii, V6Shadows } from '../../../src/constants/theme';
+import { Spacing, V6Colors, V6Radii, V6Shadows } from '../../../src/constants/theme';
+import { useHeaderTop } from '../../../src/hooks/useHeaderTop';
 
 const C = V6Colors;
 import { useAsyncData } from '../../../src/hooks/useAsyncData';
@@ -64,6 +67,7 @@ const CONFIRM_POLL_INTERVAL_MS = 1500;
 const wait = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 
 export default function HOWalletScreen() {
+  const headerTop = useHeaderTop();
   const [activeTab, setActiveTab] = useState<'all' | 'credit' | 'debit'>('all');
   const { data, loading, error, reload } = useAsyncData(() => api.wallet(), [], 'ho-wallet');
   const {
@@ -105,6 +109,17 @@ export default function HOWalletScreen() {
 
   // No point opening a form that can't be submitted: say why instead.
   const openWithdraw = () => {
+    // A never-loaded wallet reads as a 0 balance — don't tell the user they
+    // have no funds when the truth is the app couldn't check (#19). This
+    // checks `data` alone, not `error`: useAsyncData keeps the last-good
+    // `data` from cache even when a later background revalidation fails, and
+    // the balance card above already trusts that stale-but-valid data (it
+    // renders unconditionally on `data`'s presence) — so a lone `error` here
+    // would wrongly block withdrawal while a correct balance sits on screen.
+    if (!data) {
+      showToast("Couldn't load your wallet. Pull to refresh and try again.");
+      return;
+    }
     if (!canWithdrawBalance(availableToWithdraw)) {
       showToast(availableToWithdraw > 0 ? getWithdrawalHint(availableToWithdraw) : 'You have no funds available to withdraw.');
       return;
@@ -247,7 +262,7 @@ export default function HOWalletScreen() {
   const content = (
     <View style={styles.screen}>
       {/* Header — matches .topbar (flat white, not a dark hero) */}
-      <View style={styles.header}>
+      <View style={[styles.header, { paddingTop: headerTop }]}>
         <Text style={styles.headerTitle}>Wallet</Text>
       </View>
 
@@ -420,7 +435,12 @@ export default function HOWalletScreen() {
         onRequestClose={closeAddMoney}
       >
         <View style={styles.modalBackdrop}>
-          <View style={styles.modalCard}>
+          <Pressable
+            style={styles.modalCard}
+            testID="add-money-dialog"
+            // Taps on the card's empty space close the keyboard, not the modal.
+            onPress={() => Keyboard.dismiss()}
+          >
             <Text style={styles.modalTitle}>Add Money</Text>
             <Text style={styles.modalBody}>
               You'll be taken to Stripe to pay by card. Funds are held in escrow
@@ -505,7 +525,7 @@ export default function HOWalletScreen() {
                 )}
               </TouchableOpacity>
             </View>
-          </View>
+          </Pressable>
         </View>
       </Modal>
 
@@ -516,7 +536,12 @@ export default function HOWalletScreen() {
         onRequestClose={closeWithdraw}
       >
         <View style={styles.modalBackdrop}>
-          <View style={styles.modalCard}>
+          <Pressable
+            style={styles.modalCard}
+            testID="withdraw-hw-dialog"
+            // Taps on the card's empty space close the keyboard, not the modal.
+            onPress={() => Keyboard.dismiss()}
+          >
             <Text style={styles.modalTitle}>Withdraw</Text>
             <Text style={styles.modalBody}>
               Send a request to withdraw your available wallet balance. Our team will process it manually.
@@ -575,7 +600,7 @@ export default function HOWalletScreen() {
                 )}
               </TouchableOpacity>
             </View>
-          </View>
+          </Pressable>
         </View>
       </Modal>
     </View>
@@ -589,7 +614,6 @@ const styles = StyleSheet.create({
 
   header: {
     backgroundColor: C.white,
-    paddingTop: Sizes.statusBarHeight,
     paddingHorizontal: Spacing.screenH,
     paddingBottom: 12,
     borderBottomWidth: 1,

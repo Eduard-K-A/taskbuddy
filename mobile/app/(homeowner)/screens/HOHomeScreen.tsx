@@ -27,10 +27,11 @@ import {
   Sparkles,
   Wrench,
 } from 'lucide-react-native';
-import { Sizes, Spacing, V6Colors, V6Radii, V6Shadows } from '../../../src/constants/theme';
+import { Spacing, V6Colors, V6Radii, V6Shadows } from '../../../src/constants/theme';
 import { HOScreen } from '../../../src/types/navigation';
 import { useAuth } from '../../../src/context/AuthContext';
 import { useAsyncData } from '../../../src/hooks/useAsyncData';
+import { useHeaderTop } from '../../../src/hooks/useHeaderTop';
 import { api } from '../../../src/lib/api';
 import { jobStatusMeta, peso, shortDate } from '../../../src/lib/format';
 import ScreenSkeleton from '../../../src/components/ScreenSkeleton';
@@ -85,6 +86,7 @@ function WidgetError({ message, onRetry }: { message: string; onRetry: () => voi
 }
 
 export default function HOHomeScreen({ onNavigate }: HOHomeScreenProps) {
+  const headerTop = useHeaderTop();
   const { profile } = useAuth();
   const wallet = useAsyncData(() => api.wallet(), [], 'ho-home-wallet');
   const jobs = useAsyncData(() => api.myJobs(), [], 'ho-home-jobs');
@@ -121,7 +123,7 @@ export default function HOHomeScreen({ onNavigate }: HOHomeScreenProps) {
           colors={['#078eaa', '#0b7288']}
           start={{ x: 0.15, y: 0 }}
           end={{ x: 0.85, y: 1 }}
-          style={styles.hero}
+          style={[styles.hero, { paddingTop: headerTop }]}
         >
           <View style={styles.heroTopRow}>
             <View>
@@ -217,7 +219,7 @@ export default function HOHomeScreen({ onNavigate }: HOHomeScreenProps) {
 
           {/* "Need something done?" is the empty state, not a permanent card:
               once there are active jobs, the list is what matters. */}
-          {!jobs.error && activeJobs.length === 0 && (
+          {!jobs.loading && !jobs.error && activeJobs.length === 0 && (
             <TouchableOpacity
               style={styles.primaryTaskCard}
               onPress={() => onNavigate('Create Job')}
@@ -296,7 +298,6 @@ const styles = StyleSheet.create({
 
   // Hero — matches .hero-clean (linear-gradient 165deg cyan600->cyan700, rounded bottom corners)
   hero: {
-    paddingTop: Sizes.statusBarHeight,
     paddingHorizontal: Spacing.screenH,
     paddingBottom: 20,
     borderBottomLeftRadius: 26,

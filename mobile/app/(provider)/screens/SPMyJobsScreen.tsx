@@ -5,13 +5,15 @@
  * white .topbar (not a colored hero), .job-tabs underline-style filter tabs,
  * and individual `.card` rows (not a single merged list surface).
  *
- * Three tabs, and a job is only ever in one of them:
+ * Four tabs, and a job is only ever in one of them:
  *   Applications — proposals still in play or turned down (pending, not
  *     selected, withdrawn). Once a client hires this provider the job moves
  *     to Active, so it no longer shows here as "Hired" at the same time.
  *   Active — hired work: awaiting this provider's confirmation, confirmed,
  *     or in progress, labelled from the provider's side.
  *   Completed.
+ *   Cancelled — a booking this provider declined, or the client cancelled
+ *     (indistinguishable in the data today), plus jobs that expired.
  */
 
 import React from 'react';
@@ -25,7 +27,8 @@ import {
   View,
 } from 'react-native';
 import { Briefcase, CalendarDays, FileText } from 'lucide-react-native';
-import { Sizes, Spacing, V6Colors } from '../../../src/constants/theme';
+import { Spacing, V6Colors } from '../../../src/constants/theme';
+import { useHeaderTop } from '../../../src/hooks/useHeaderTop';
 import JobCard from '../../../src/components/JobCard';
 
 const C = V6Colors;
@@ -34,7 +37,7 @@ import { useAsyncData } from '../../../src/hooks/useAsyncData';
 import { api } from '../../../src/lib/api';
 import { providerJobStatusMeta, shortDate } from '../../../src/lib/format';
 
-const TABS = ['Applications', 'Active', 'Completed'] as const;
+const TABS = ['Applications', 'Active', 'Completed', 'Cancelled'] as const;
 type Tab = (typeof TABS)[number];
 
 interface ApplicationRow {
@@ -63,6 +66,7 @@ interface SPMyJobsScreenProps {
 }
 
 export default function SPMyJobsScreen({ onNavigate }: SPMyJobsScreenProps) {
+  const headerTop = useHeaderTop();
   // Retained so going back from a job lands on the filter it was opened from.
   const [tab, setTab] = useRetainedState<Tab>('sp.myWork.tab', 'Applications');
   const scroll = useRetainedScroll(`sp.myWork.${tab}`);
@@ -84,14 +88,23 @@ export default function SPMyJobsScreen({ onNavigate }: SPMyJobsScreenProps) {
     ['assigned', 'confirmed', 'in_progress'].includes(j.status),
   );
   const completedJobs = (assigned ?? []).filter((j) => j.status === 'completed');
+  const cancelledJobs = (assigned ?? []).filter(
+    (j) => j.status === 'cancelled' || j.status === 'expired',
+  );
   // Hired proposals live under Active from here on (see header comment).
   const openApplications = (applications ?? []).filter((a) => a.status !== 'accepted');
   const loading = tab === 'Applications' ? loadingApps : loadingAssigned;
 
+  const jobsForTab: Record<Exclude<Tab, 'Applications'>, typeof activeJobs> = {
+    Active: activeJobs,
+    Completed: completedJobs,
+    Cancelled: cancelledJobs,
+  };
+
   return (
     <View style={styles.screen}>
       {/* Header — matches .topbar (flat white) */}
-      <View style={styles.header}>
+      <View style={[styles.header, { paddingTop: headerTop }]}>
         <Text style={styles.headerTitle}>My Work</Text>
       </View>
 
@@ -136,14 +149,18 @@ export default function SPMyJobsScreen({ onNavigate }: SPMyJobsScreenProps) {
         )}
 
         {tab !== 'Applications' && !loading && (
-          (tab === 'Active' ? activeJobs : completedJobs).length === 0 ? (
+          jobsForTab[tab].length === 0 ? (
             <View style={styles.emptyState}>
               <Briefcase size={30} color={C.ink300} />
               <Text style={styles.emptyTitle}>No {tab.toLowerCase()} jobs</Text>
-              <Text style={styles.emptyText}>Jobs will move here after a client hires you.</Text>
+              <Text style={styles.emptyText}>
+                {tab === 'Cancelled'
+                  ? 'Bookings you decline or that get cancelled will appear here.'
+                  : 'Jobs will move here after a client hires you.'}
+              </Text>
             </View>
           ) : (
-            (tab === 'Active' ? activeJobs : completedJobs).map((job) => (
+            jobsForTab[tab].map((job) => (
               <JobCard
                 key={job.id}
                 title={job.title}
@@ -172,7 +189,6 @@ const styles = StyleSheet.create({
 
   header: {
     backgroundColor: C.white,
-    paddingTop: Sizes.statusBarHeight,
     paddingHorizontal: Spacing.screenH,
     paddingBottom: 12,
     borderBottomWidth: 1, borderBottomColor: '#edf1f4',

@@ -11,7 +11,7 @@
  * AuthContext, which persists the session and resolves the account's role.
  */
 
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { BackHandler, LogBox, StyleSheet, View } from 'react-native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 
@@ -87,6 +87,9 @@ import { HOScreen, SPScreen } from './src/types/navigation';
 // ── Auth ───────────────────────────────────────────────────────────────────────
 import { AuthProvider, useAuth } from './src/context/AuthContext';
 import { hasCompletedOnboarding, markOnboardingCompleted } from './src/lib/onboarding';
+import { api } from './src/lib/api';
+import { consumeLastNotificationTap, subscribeToNotificationTaps } from './src/lib/pushNotifications';
+import { resolveNotificationTarget } from './src/lib/notificationRouting';
 
 const HOMEOWNER_TABS: readonly BottomNavItem<HOScreen>[] = [
   { key: 'Home', label: 'Home', icon: Home },
@@ -171,9 +174,11 @@ function AppContent() {
   const SP_TAB_SCREENS: SPScreen[] = ['Dashboard', 'My Jobs', 'Calendar', 'Wallet'];
 
   // ── HO helpers ────────────────────────────────────────────────────────────
-  // Jumping to a tab (or the Create Job flow, which has its own onBack/onSuccess
-  // that reset the tab directly) is a "root" navigation — it clears the back
-  // stack rather than pushing onto it, same as tapping a tab in a native app.
+  // Jumping to a tab is a "root" navigation — it clears the back stack rather
+  // than pushing onto it, same as tapping a tab in a native app. Create Job is
+  // the one exception: it pushes onto the stack like an ordinary screen (so
+  // "My Jobs" → New → back returns to My Jobs, not Home), and its own
+  // onBack/onSuccess handlers land it on the right tab when the flow ends.
   const hoNavigate = (screen: HOScreen, id?: string) => {
     if (HO_TAB_SCREENS.includes(screen)) {
       setHOStack([]);
@@ -304,6 +309,61 @@ function AppContent() {
     role, hoScreen, hoTab, hoStack,
     spScreen, spTab, spStack,
   ]);
+
+  // ── Push-tap routing ──────────────────────────────────────────────────────
+  // A tapped push can land before auth/onboarding gates have settled (cold
+  // start especially), so the payload is parked here and only acted on once
+  // the second effect below sees a stable, signed-in, fully-onboarded state.
+  const [pendingPushTarget, setPendingPushTarget] = useState<Record<string, string> | null>(null);
+  const handledNotificationIds = useRef(new Set<string>());
+  const isAuthenticatedRef = useRef(isAuthenticated);
+  isAuthenticatedRef.current = isAuthenticated;
+  const hoNavigateRef = useRef(hoNavigate);
+  hoNavigateRef.current = hoNavigate;
+  const spNavigateRef = useRef(spNavigate);
+  spNavigateRef.current = spNavigate;
+
+  useEffect(() => {
+    const acceptTap = (data: Record<string, string>) => {
+      // A tap with no recipient context arriving while signed out can't be
+      // safely routed — drop it rather than guess who it was for.
+      if (!isAuthenticatedRef.current) return;
+      const id = data.notification_id;
+      if (id && handledNotificationIds.current.has(id)) return;
+      if (id) handledNotificationIds.current.add(id);
+      setPendingPushTarget(data);
+    };
+
+    let unsubscribe = () => {};
+    void subscribeToNotificationTaps(acceptTap).then((unsub) => {
+      unsubscribe = unsub;
+    });
+    void consumeLastNotificationTap().then((data) => {
+      if (data) acceptTap(data);
+    });
+
+    return () => unsubscribe();
+  }, []);
+
+  useEffect(() => {
+    if (!pendingPushTarget) return;
+    if (!isAuthenticated || isGoogleSignupPending || showOnboarding !== false || !role) return;
+
+    const target = resolveNotificationTarget(role, pendingPushTarget);
+    if (target.kind === 'proposals') {
+      hoNavigateRef.current('Job Applications', target.jobId);
+    } else if (target.kind === 'job') {
+      if (role === 'homeowner') hoNavigateRef.current('Job Detail', target.jobId);
+      else spNavigateRef.current('Job Detail', target.jobId);
+    } else {
+      if (role === 'homeowner') hoNavigateRef.current('Notifications');
+      else spNavigateRef.current('Notifications');
+    }
+
+    const notificationId = pendingPushTarget.notification_id;
+    if (notificationId) void api.markNotificationRead(notificationId).catch(() => {});
+    setPendingPushTarget(null);
+  }, [pendingPushTarget, isAuthenticated, isGoogleSignupPending, showOnboarding, role]);
 
   useEffect(() => {
     // Pre-warm the browser on Android so Google OAuth opens instantly.
@@ -539,9 +599,16 @@ function AppContent() {
     if (hoScreen === 'Help & Support') {
       return (
         <ScreenFrame>
-          <HelpSupportScreen role="homeowner" onBack={hoBack} />
+          <HelpSupportScreen
+            role="homeowner"
+            onBack={hoBack}
+            onViewTutorial={() => hoNavigate('Tutorial')}
+          />
         </ScreenFrame>
       );
+    }
+    if (hoScreen === 'Tutorial') {
+      return <OnboardingScreen role="homeowner" onFinish={hoBack} onLogin={hoBack} />;
     }
     if (hoScreen === 'Create Job') {
       return (
@@ -585,10 +652,13 @@ function AppContent() {
     };
 
     return (
-      <ScreenFrame>
+      // Not ScreenFrame: BottomNavBar already pads insets.bottom itself
+      // (BUG-002), so wrapping in ScreenFrame double-padded the bottom on
+      // every homeowner tab screen. SP tabs below already avoid this.
+      <View style={styles.screen}>
         <View style={styles.tabContent}>{renderHOTabContent()}</View>
         <BottomNavBar activeTab={hoTab} tabs={HOMEOWNER_TABS} onTabPress={hoNavigate} />
-      </ScreenFrame>
+      </View>
     );
   }
 
@@ -654,9 +724,16 @@ function AppContent() {
   if (spScreen === 'Help & Support') {
     return (
       <ScreenFrame>
-        <HelpSupportScreen role="provider" onBack={spBack} />
+        <HelpSupportScreen
+          role="provider"
+          onBack={spBack}
+          onViewTutorial={() => spNavigate('Tutorial')}
+        />
       </ScreenFrame>
     );
+  }
+  if (spScreen === 'Tutorial') {
+    return <OnboardingScreen role="provider" onFinish={spBack} onLogin={spBack} />;
   }
   if (spScreen === 'Verification') {
     return (

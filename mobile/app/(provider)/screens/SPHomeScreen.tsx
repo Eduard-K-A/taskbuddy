@@ -50,7 +50,8 @@ import {
   TriangleAlert,
   Wallet,
 } from 'lucide-react-native';
-import { Sizes, Spacing, V6Colors } from '../../../src/constants/theme';
+import { Spacing, V6Colors } from '../../../src/constants/theme';
+import { useHeaderTop } from '../../../src/hooks/useHeaderTop';
 import { SPScreen } from '../../../src/types/navigation';
 
 const C = V6Colors;
@@ -63,6 +64,7 @@ import OwnAvatar from '../../../src/components/OwnAvatar';
 import JobCard from '../../../src/components/JobCard';
 import AcceptBookingModal, { type AcceptLocation } from '../../../src/components/AcceptBookingModal';
 import { useRetainedState } from '../../../src/hooks/useRetainedState';
+import { useRefreshOnForeground } from '../../../src/hooks/useRefreshOnForeground';
 
 const URGENCY_FILTERS = [
   { key: 'all', label: 'All' },
@@ -80,8 +82,22 @@ interface SPHomeScreenProps {
 }
 
 export default function SPHomeScreen({ onNavigate }: SPHomeScreenProps) {
-  const { profile, providerProfile, isVerified } = useAuth();
+  const headerTop = useHeaderTop();
+  const { profile, providerProfile, isVerified, refreshProfile } = useAuth();
   const radiusKm = providerProfile?.service_radius_km ?? DEFAULT_RADIUS_KM;
+
+  // The "Verify to Apply" banner (below) reflects cached profile state, but
+  // verification is approved async by a webhook while the app may be
+  // backgrounded — without this it stays stale until the user happens to
+  // revisit Verification or restart the app (QA P2.1).
+  useRefreshOnForeground(() => void refreshProfile(), !isVerified);
+  useEffect(() => {
+    if (!isVerified) void refreshProfile();
+    // Only on mount — refreshProfile itself is stable (useCallback([])), and
+    // re-running this on every isVerified flip would refetch right after the
+    // fetch that caused the flip.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
   const { data, reload } = useAsyncData(async () => {
     const [feed, assigned] = await Promise.all([
       api.browseJobs({
@@ -175,7 +191,7 @@ export default function SPHomeScreen({ onNavigate }: SPHomeScreenProps) {
         locations={[0, 0.72, 1]}
         start={{ x: 0.15, y: 0 }}
         end={{ x: 0.85, y: 1 }}
-        style={styles.hero}
+        style={[styles.hero, { paddingTop: headerTop }]}
       >
         <View style={styles.heroTopRow}>
           <View>
@@ -437,7 +453,6 @@ export default function SPHomeScreen({ onNavigate }: SPHomeScreenProps) {
       <AcceptBookingModal
         visible={!!acceptingJob}
         jobTitle={acceptingJob?.title}
-        defaultAddress={profile?.address}
         busy={!!acceptingJob && actingOn === acceptingJob.id}
         error={acceptingJob ? actionError : null}
         onConfirm={(location) => acceptingJob && void acceptBooking(acceptingJob, location)}
@@ -466,7 +481,6 @@ const styles = StyleSheet.create({
   screen: { flex: 1, backgroundColor: C.canvas },
 
   hero: {
-    paddingTop: Sizes.statusBarHeight,
     paddingHorizontal: Spacing.screenH,
     paddingBottom: 18,
     borderBottomLeftRadius: 26,

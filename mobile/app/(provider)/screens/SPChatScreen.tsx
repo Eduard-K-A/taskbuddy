@@ -21,12 +21,14 @@ import {
   ActivityIndicator,
   FlatList,
   Image,
+  Keyboard,
   KeyboardAvoidingView,
   Platform,
   StyleSheet,
   Text,
   TextInput,
   TouchableOpacity,
+  TouchableWithoutFeedback,
   View,
 } from 'react-native';
 import {
@@ -36,7 +38,8 @@ import {
 } from 'lucide-react-native';
 import * as ImagePicker from 'expo-image-picker';
 import { requestAppPermission } from '../../../src/lib/permissions';
-import { Sizes, Spacing, V6Colors } from '../../../src/constants/theme';
+import { Spacing, V6Colors } from '../../../src/constants/theme';
+import { useHeaderTop } from '../../../src/hooks/useHeaderTop';
 
 const C = V6Colors;
 import { useAuth } from '../../../src/context/AuthContext';
@@ -56,6 +59,7 @@ interface SPChatScreenProps {
 }
 
 export default function SPChatScreen({ jobId, onBack, onViewJob }: SPChatScreenProps) {
+  const headerTop = useHeaderTop();
   const { profile } = useAuth();
   const [conversation, setConversation] = useState<Conversation | null>(null);
   const [messages, setMessages] = useState<Message[]>([]);
@@ -157,7 +161,7 @@ export default function SPChatScreen({ jobId, onBack, onViewJob }: SPChatScreenP
   return (
     <View style={styles.screen}>
       {/* Header — matches .topbar (flat white, not a colored hero) */}
-      <View style={styles.header}>
+      <View style={[styles.header, { paddingTop: headerTop }]}>
         <TouchableOpacity style={styles.backBtn} onPress={onBack} activeOpacity={0.8}>
           <ArrowLeft size={20} color={C.ink700} />
         </TouchableOpacity>
@@ -182,7 +186,11 @@ export default function SPChatScreen({ jobId, onBack, onViewJob }: SPChatScreenP
       >
         {loading && <ActivityIndicator style={{ marginTop: 30 }} color={C.cyan700} />}
         {!!error && !loading && <Text style={styles.stateText}>{error}</Text>}
-        {!loading && !error && messages.length === 0 && <ChatEmptyState />}
+        {!loading && !error && messages.length === 0 && (
+          <TouchableWithoutFeedback onPress={Keyboard.dismiss} accessible={false}>
+            <ChatEmptyState />
+          </TouchableWithoutFeedback>
+        )}
         <FlatList keyboardShouldPersistTaps="handled" keyboardDismissMode="on-drag"
           ref={listRef}
           data={messages}
@@ -237,7 +245,6 @@ const styles = StyleSheet.create({
   header: {
     flexDirection: 'row', alignItems: 'center', gap: 10,
     backgroundColor: C.white,
-    paddingTop: Sizes.statusBarHeight,
     paddingHorizontal: Spacing.screenH,
     paddingBottom: 12,
     borderBottomWidth: 1, borderBottomColor: '#edf1f4',

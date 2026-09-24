@@ -42,7 +42,8 @@ import {
   Moon,
   Trash2,
 } from 'lucide-react-native';
-import { Sizes, Spacing, V6Colors } from '../../../src/constants/theme';
+import { Spacing, V6Colors } from '../../../src/constants/theme';
+import { useHeaderTop } from '../../../src/hooks/useHeaderTop';
 
 const C = V6Colors;
 import ConfirmationModal from '../../../src/components/ConfirmationModal';
@@ -56,6 +57,7 @@ interface HOSettingsScreenProps {
 }
 
 export default function HOSettingsScreen({ onBack, onLogout }: HOSettingsScreenProps) {
+  const headerTop = useHeaderTop();
   const { flags, setFlag, loading: settingsLoading, error: settingsError } = useSettings();
 
   const [showPasswordModal, setShowPasswordModal] = useState(false);
@@ -101,7 +103,7 @@ export default function HOSettingsScreen({ onBack, onLogout }: HOSettingsScreenP
   return (
     <View style={styles.screen}>
       {/* Header — matches .topbar (flat white, not a colored hero) */}
-      <View style={styles.header}>
+      <View style={[styles.header, { paddingTop: headerTop }]}>
         <TouchableOpacity style={styles.backBtn} onPress={onBack} activeOpacity={0.8}>
           <ArrowLeft size={20} color={C.ink700} />
         </TouchableOpacity>
@@ -173,7 +175,12 @@ export default function HOSettingsScreen({ onBack, onLogout }: HOSettingsScreenP
               <ChevronRight size={20} color={C.ink300} />
             </TouchableOpacity>
           ))}
-          <TouchableOpacity style={styles.navrow} activeOpacity={0.7} onPress={() => setShowDeleteModal(true)}>
+          <TouchableOpacity
+            style={styles.navrow}
+            activeOpacity={0.7}
+            onPress={() => setShowDeleteModal(true)}
+            testID="settings-delete-account-row"
+          >
             <View style={styles.rowIcon}>
               <Trash2 size={17} color="#ef4444" />
             </View>
@@ -222,6 +229,7 @@ export default function HOSettingsScreen({ onBack, onLogout }: HOSettingsScreenP
         message={deleteError ?? 'This permanently removes your personal details and signs you out. You must first clear any wallet balance, pending withdrawal, active job, escrow hold, or dispute.'}
         confirmLabel={deleting ? 'Deleting…' : deleteError ? 'Try Again' : 'Delete Account'}
         cancelLabel="Cancel"
+        destructive
         onConfirm={() => void handleDelete()}
         onCancel={() => {
           if (deleting) return;
@@ -240,7 +248,6 @@ const styles = StyleSheet.create({
   header: {
     flexDirection: 'row', alignItems: 'center', gap: 12,
     backgroundColor: C.white,
-    paddingTop: Sizes.statusBarHeight,
     paddingHorizontal: Spacing.screenH,
     paddingBottom: 12,
     borderBottomWidth: 1, borderBottomColor: '#edf1f4',

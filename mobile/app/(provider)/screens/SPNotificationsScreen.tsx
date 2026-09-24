@@ -26,12 +26,14 @@ import {
 } from 'lucide-react-native';
 import ConfirmationModal from '../../../src/components/ConfirmationModal';
 import { useNotificationDeletion } from '../../../src/hooks/useNotificationDeletion';
-import { Sizes, Spacing, V6Colors } from '../../../src/constants/theme';
+import { Spacing, V6Colors } from '../../../src/constants/theme';
+import { useHeaderTop } from '../../../src/hooks/useHeaderTop';
 
 const C = V6Colors;
 import { useAsyncData } from '../../../src/hooks/useAsyncData';
 import { api } from '../../../src/lib/api';
 import { timeAgo } from '../../../src/lib/format';
+import { resolveNotificationTarget } from '../../../src/lib/notificationRouting';
 
 interface NotificationRow {
   id: string;
@@ -57,6 +59,7 @@ interface SPNotificationsScreenProps {
 }
 
 export default function SPNotificationsScreen({ onBack, onOpenJob }: SPNotificationsScreenProps) {
+  const headerTop = useHeaderTop();
   const { data, loading, error, reload } = useAsyncData(
     () => api.notifications() as Promise<NotificationRow[]>,
     [],
@@ -82,10 +85,10 @@ export default function SPNotificationsScreen({ onBack, onOpenJob }: SPNotificat
    * and a failed mark-read should not keep the provider from the job.
    */
   const openNotification = (notif: NotificationRow) => {
-    const jobId = notif.data?.job_id;
-    if (jobId) {
+    const target = resolveNotificationTarget('provider', notif.data ?? {});
+    if (target.kind === 'job') {
       if (!notif.read_at) api.markNotificationRead(notif.id).catch(() => {});
-      onOpenJob(jobId);
+      onOpenJob(target.jobId);
     } else if (!notif.read_at) {
       markRead(notif.id);
     }
@@ -94,7 +97,7 @@ export default function SPNotificationsScreen({ onBack, onOpenJob }: SPNotificat
   return (
     <View style={styles.screen}>
       {/* Header — matches .topbar (flat white, not a dark hero) */}
-      <View style={styles.header}>
+      <View style={[styles.header, { paddingTop: headerTop }]}>
         <TouchableOpacity style={styles.backBtn} onPress={onBack} activeOpacity={0.8}>
           <ArrowLeft size={20} color={C.ink700} />
         </TouchableOpacity>
@@ -185,7 +188,6 @@ const styles = StyleSheet.create({
   header: {
     flexDirection: 'row', alignItems: 'center', gap: 12,
     backgroundColor: C.white,
-    paddingTop: Sizes.statusBarHeight,
     paddingHorizontal: Spacing.screenH,
     paddingBottom: 12,
     borderBottomWidth: 1, borderBottomColor: '#edf1f4',

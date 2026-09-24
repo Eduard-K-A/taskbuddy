@@ -31,11 +31,12 @@ import {
   TriangleAlert,
   Wrench,
 } from 'lucide-react-native';
-import { Spacing, Sizes, V6Colors } from '../../../src/constants/theme';
+import { Spacing, V6Colors } from '../../../src/constants/theme';
+import { useHeaderTop } from '../../../src/hooks/useHeaderTop';
 import { HOScreen } from '../../../src/types/navigation';
 import { useAsyncData } from '../../../src/hooks/useAsyncData';
 import { api, ApiError } from '../../../src/lib/api';
-import { initials, jobStatusMeta, peso, shortDate, timeAgo, urgencyMeta } from '../../../src/lib/format';
+import { initials, jobStatusMeta, peso, shortDate, timeAgo, timeOfDay, urgencyMeta } from '../../../src/lib/format';
 import ConfirmationModal from '../../../src/components/ConfirmationModal';
 
 const C = V6Colors;
@@ -72,6 +73,7 @@ interface HOJobDetailScreenProps {
 }
 
 export default function HOJobDetailScreen({ jobId, onBack, onNavigate }: HOJobDetailScreenProps) {
+  const headerTop = useHeaderTop();
   const { data, loading, error, reload } = useAsyncData(async () => {
     if (!jobId) throw new Error('No job selected.');
     const job = await api.getJob(jobId);
@@ -88,6 +90,7 @@ export default function HOJobDetailScreen({ jobId, onBack, onNavigate }: HOJobDe
   const [actionError, setActionError] = useState<string | null>(null);
   const [matchingMessage, setMatchingMessage] = useState<string | null>(null);
   const [confirmCancel, setConfirmCancel] = useState(false);
+  const [confirmComplete, setConfirmComplete] = useState(false);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
 
   const job = data?.job;
@@ -148,7 +151,7 @@ export default function HOJobDetailScreen({ jobId, onBack, onNavigate }: HOJobDe
   return (
     <View style={styles.screen}>
       {/* Header — matches .topbar (flat white, not a colored hero) */}
-      <View style={styles.header}>
+      <View style={[styles.header, { paddingTop: headerTop }]}>
         <TouchableOpacity style={styles.backBtn} onPress={onBack} activeOpacity={0.8}>
           <ArrowLeft size={20} color={C.ink700} />
         </TouchableOpacity>
@@ -187,7 +190,9 @@ export default function HOJobDetailScreen({ jobId, onBack, onNavigate }: HOJobDe
                 <View style={{ flex: 1, minWidth: 0 }}>
                   <Text style={styles.factLabel}>Schedule</Text>
                   <Text style={styles.factValue} numberOfLines={1}>
-                    {job.scheduled_at ? shortDate(job.scheduled_at) : 'Flexible'}
+                    {job.scheduled_at
+                      ? `${shortDate(job.scheduled_at)} · ${timeOfDay(job.scheduled_at)}`
+                      : 'Flexible'}
                   </Text>
                 </View>
               </View>
@@ -373,7 +378,7 @@ export default function HOJobDetailScreen({ jobId, onBack, onNavigate }: HOJobDe
         <View style={styles.actionBar}>
           {!!actionError && <Text style={styles.actionError}>{actionError}</Text>}
           {canComplete && (
-            <TouchableOpacity style={styles.primaryBtn} onPress={() => runAction(() => api.completeJob(job.id))} activeOpacity={0.85} disabled={busy}>
+            <TouchableOpacity style={styles.primaryBtn} onPress={() => setConfirmComplete(true)} activeOpacity={0.85} disabled={busy}>
               <Text style={styles.primaryBtnText}>{busy ? 'Working…' : 'Confirm Completion'}</Text>
             </TouchableOpacity>
           )}
@@ -418,6 +423,7 @@ export default function HOJobDetailScreen({ jobId, onBack, onNavigate }: HOJobDe
         }
         confirmLabel="Cancel Job"
         cancelLabel="Keep Job"
+        destructive
         onCancel={() => setConfirmCancel(false)}
         onConfirm={() => {
           setConfirmCancel(false);
@@ -426,6 +432,26 @@ export default function HOJobDetailScreen({ jobId, onBack, onNavigate }: HOJobDe
             await api.cancelJob(job.id);
             onBack();
           });
+        }}
+      />
+
+      {/* Releases escrow to the provider immediately — ask first (QA #6). */}
+      <ConfirmationModal
+        visible={confirmComplete}
+        title="Mark this job complete?"
+        message={
+          job?.budget != null
+            ? `This releases ${peso(job.budget)} to the provider. It cannot be undone.`
+            : 'This releases the held funds to the provider. It cannot be undone.'
+        }
+        confirmLabel="Yes, Mark Complete"
+        cancelLabel="Not Yet"
+        busy={busy}
+        onCancel={() => setConfirmComplete(false)}
+        onConfirm={() => {
+          setConfirmComplete(false);
+          if (!job) return;
+          void runAction(() => api.completeJob(job.id));
         }}
       />
     </View>
@@ -438,7 +464,6 @@ const styles = StyleSheet.create({
   header: {
     flexDirection: 'row', alignItems: 'center', gap: 12,
     backgroundColor: C.white,
-    paddingTop: Sizes.statusBarHeight,
     paddingHorizontal: Spacing.screenH,
     paddingBottom: 12,
     borderBottomWidth: 1, borderBottomColor: '#edf1f4',

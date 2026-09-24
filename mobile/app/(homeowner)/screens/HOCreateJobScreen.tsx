@@ -83,7 +83,7 @@ import DateTimePicker, {
 import { Calendar } from 'react-native-calendars';
 import * as ImagePicker from 'expo-image-picker';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { Sizes, Spacing, V6Colors, V6Shadows } from '../../../src/constants/theme';
+import { Spacing, V6Colors, V6Shadows } from '../../../src/constants/theme';
 import { useAuth } from '../../../src/context/AuthContext';
 import { useAsyncData } from '../../../src/hooks/useAsyncData';
 import { api, type GeocodedAddress } from '../../../src/lib/api';
@@ -216,6 +216,7 @@ export default function HOCreateJobScreen({
   const { profile } = useAuth();
   const categories = useAsyncData(() => api.categories(), []);
   const insets = useSafeAreaInsets();
+  const headerTop = insets.top + 28;
 
   const [step, setStep] = useState(initialCategoryId ? 2 : 1);
   const [categoryId, setCategoryId] = useState<number | null>(null);
@@ -648,10 +649,12 @@ export default function HOCreateJobScreen({
   };
 
   if (step === 6) {
-    // Success screen
+    // Success screen. Scrolls rather than a fixed centered View — a long
+    // job title or address (QA #3) used to push the buttons off-screen on a
+    // short phone with nothing to scroll to reach them.
     return (
       <View style={styles.screen}>
-        <View style={styles.successScreen}>
+        <ScrollView contentContainerStyle={styles.successScreen}>
           <View style={styles.successIcon}>
             <CheckCircle2 size={48} color={Colors.brandTeal} />
           </View>
@@ -666,7 +669,7 @@ export default function HOCreateJobScreen({
             </View>
             <View style={styles.successRow}>
               <Text style={styles.successLabel}>Location</Text>
-              <Text style={styles.successValue}>{location}</Text>
+              <Text style={styles.successValue} numberOfLines={3}>{location}</Text>
             </View>
             <View style={styles.successRow}>
               <Text style={styles.successLabel}>Tasks</Text>
@@ -685,7 +688,7 @@ export default function HOCreateJobScreen({
           <TouchableOpacity style={styles.secondaryBtn} onPress={startAnother} activeOpacity={0.8}>
             <Text style={styles.secondaryBtnText}>Post Another Job</Text>
           </TouchableOpacity>
-        </View>
+        </ScrollView>
       </View>
     );
   }
@@ -701,7 +704,7 @@ export default function HOCreateJobScreen({
           clearError('terms');
         }}
       />
-      <View style={styles.header}>
+      <View style={[styles.header, { paddingTop: headerTop }]}>
         <TouchableOpacity style={styles.backBtn} onPress={handleExit} activeOpacity={0.8}>
           <ArrowLeft size={22} color={Colors.ink700} />
         </TouchableOpacity>
@@ -1264,6 +1267,7 @@ export default function HOCreateJobScreen({
         message="Leaving now will delete the job details you have entered."
         confirmLabel="Discard & Exit"
         cancelLabel="Keep Editing"
+        destructive
         onCancel={() => setShowExitConfirmation(false)}
         onConfirm={() => {
           setShowExitConfirmation(false);
@@ -1378,7 +1382,6 @@ const styles = StyleSheet.create({
   header: {
     backgroundColor: Colors.white,
     flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center',
-    paddingTop: Sizes.statusBarHeight,
     paddingHorizontal: Spacing.screenH,
     paddingBottom: 12,
     borderBottomWidth: 1, borderBottomColor: '#edf1f4',
@@ -1592,7 +1595,7 @@ const styles = StyleSheet.create({
   errorText: { color: Colors.error, fontSize: 15.5, fontFamily: 'Inter', marginBottom: 10, textAlign: 'center' },
 
   // Success
-  successScreen: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: 32 },
+  successScreen: { flexGrow: 1, alignItems: 'center', justifyContent: 'center', padding: 32 },
   successIcon: {
     width: 100, height: 100, borderRadius: 50,
     backgroundColor: '#F0FDF4', alignItems: 'center', justifyContent: 'center', marginBottom: 24,
@@ -1605,8 +1608,8 @@ const styles = StyleSheet.create({
   // flexShrink + a width cap: a long address used to run past the card edge.
   successValue: { color: Colors.brandDark, fontSize: 15, fontWeight: '700', fontFamily: 'Inter', flexShrink: 1, maxWidth: '65%', textAlign: 'right' },
   secondaryBtn: {
-    marginTop: 12, paddingVertical: 14, alignItems: 'center', borderRadius: 13,
+    marginTop: 12, paddingVertical: 12, minHeight: 44, justifyContent: 'center', alignItems: 'center', borderRadius: 13,
     borderWidth: 1, borderColor: Colors.brandTeal, width: '100%',
   },
-  secondaryBtnText: { color: Colors.brandTeal, fontSize: 16.5, fontWeight: '700', fontFamily: 'Inter' },
+  secondaryBtnText: { color: Colors.brandTeal, fontSize: 15, fontWeight: '700', fontFamily: 'Inter' },
 });
