@@ -84,17 +84,26 @@ export class ChatService {
       .order('created_at', { ascending: false });
     if (error) throw new BadRequestException(error.message);
     const conversations = data ?? [];
-    const { data: latestMessages, error: latestMessagesError } =
+    const { data: latestMessagesData, error: latestMessagesError } =
       await this.supabase.admin.rpc('latest_conversation_messages', {
         p_conversation_ids: conversations.map(
           (conversation: ConversationRow) => conversation.id,
         ),
       });
-    if (latestMessagesError)
+    let latestMessages: LatestMessagePreview[];
+    if (latestMessagesError?.code === 'PGRST202') {
+      this.logger.warn(
+        'latest_conversation_messages is missing from the PostgREST schema cache; returning conversations without previews',
+      );
+      latestMessages = [];
+    } else if (latestMessagesError) {
       throw new BadRequestException(latestMessagesError.message);
+    } else {
+      latestMessages = latestMessagesData as LatestMessagePreview[];
+    }
     const { conversations: unread } = await this.unreadCounts(user);
     const latestByConversation = new Map<string, LatestMessagePreview>(
-      (latestMessages as LatestMessagePreview[]).map(
+      latestMessages.map(
         (message) => [message.conversation_id, message] as const,
       ),
     );

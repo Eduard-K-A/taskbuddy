@@ -2126,7 +2126,9 @@ client-initiated cancellation. `GET /jobs/:id` returns it through the existing `
 `latest_conversation_messages(uuid[])` RPC. It returns at most one row per requested conversation,
 choosing by `created_at DESC, id DESC`; conversations with no messages are represented by a null
 body and sender and a `false` attachment flag in the API response. The read does not modify
-`messages.read_at` or unread counts.
+`messages.read_at` or unread counts. If PostgREST has not loaded the RPC yet, the API still returns
+the conversation list and unread counts with null preview fields and logs a warning; message
+threads continue to load through their existing endpoint.
 
 Hire payment status now uses the attempt re-read after Xendit reconciliation. When reconciliation
 finds an invoice expired or failed, `POST /payments/hire-checkout-session` can create a fresh

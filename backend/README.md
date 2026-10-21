@@ -417,7 +417,7 @@ All bodies are JSON. 🔒 = requires auth; (client) / (provider) = role-restrict
 | `PUT /payouts/account` 🔒 (provider) | `{ method: gcash\|maya\|bank, bank_code? (bank only, from `GET /payouts/banks`), account_name, account_number (6–20 digits) }` — also sends any payout that was waiting for an account |
 | `DELETE /payouts/account` 🔒 (provider) | unlink |
 | `GET /payouts/banks` 🔒 | banks a payout can go to, `[{ code, name }]` |
-| `GET /conversations` 🔒 | caller's conversations (counterpart name, last-message time, `last_message_body`, `last_message_has_attachment`, `last_message_sender_id`, and `unread_count`). A single service-role RPC reads the newest message for the full conversation list; this does not mark messages read (0061, 0079) |
+| `GET /conversations` 🔒 | caller's conversations (counterpart name, last-message time, `last_message_body`, `last_message_has_attachment`, `last_message_sender_id`, and `unread_count`). A single service-role RPC reads the newest message for the full conversation list; if PostgREST has not loaded that RPC yet, the list still loads without previews and logs a warning. This does not mark messages read (0061, 0079) |
 | `POST /conversations` 🔒 | get-or-create for `{ job_id }` — job must have an assigned provider |
 | `GET /conversations/:id/messages` 🔒 | messages, oldest first |
 | `POST /conversations/:id/messages` 🔒 | send `{ body (1–1000)?, attachment_path? }` — at least one of the two is required. `attachment_path` must be a `chat-attachments` path from `POST /uploads/signed-url`, owned by the sender, and already uploaded as a non-empty image (400 otherwise) |
