@@ -21,6 +21,9 @@ The full data-schema and product spec lives in [`BACKEND_SCHEMA.md`](./BACKEND_S
 > live database. Migrations **0076** and **0077** below are new and have not
 > been applied or verified live. See the current
 > [backend implementation plan](../docs/backend-handoff-plan-2026-10-20.md).
+>
+> This implementation adds migrations **0078** and **0079**. They have not
+> been applied or verified against the live database in this task.
 
 ## Architecture
 
@@ -154,6 +157,8 @@ Job lifecycle: `open → recommending → assigned → in_progress → completed
    | `0075_proposal_quotes.sql` | Stores provider proposal quotes and places the escrow hold atomically at the accepted quote. |
    | `0076_job_address_details.sql` | Optional house, unit, floor, or landmark details, separate from the signed job pin. |
    | `0077_xendit_hire_invoice_recovery.sql` | Persists Xendit hire invoices and uses a five-minute claim lease so webhooks, manual status checks, and the reconciliation tick can recover delayed payments safely. |
+   | `0078_job_cancellation_reason.sql` | Stores a provider's decline reason on the job, limited to 200 characters. |
+   | `0079_latest_conversation_messages.sql` | Returns the latest message preview for a batch of conversations to the backend service role. |
 
    On the linked project, 0001–0052 are recorded in the migration history.
    Later migrations were applied but not all are recorded there (0060 and
@@ -368,11 +373,11 @@ All bodies are JSON. 🔒 = requires auth; (client) / (provider) = role-restrict
 | `GET /jobs/static-map?lat=&lon=` 🔒 (client) | `image/png` 600×300 map of a geocoded point, rendered by Geoapify server-side so the key never reaches the app. Coordinates must fall in the Philippines box (`400` otherwise); `503` when Geoapify fails or `GEOAPIFY_API_KEY` is unset. 20/min per IP. `BACKEND_SCHEMA.md` §31.1 |
 | `GET /jobs/mine` 🔒 (client) | own jobs |
 | `GET /jobs/assigned` 🔒 (provider) | jobs assigned to me |
-| `GET /jobs/:id` 🔒 | job detail; for the job's client and assigned provider it includes `escrow: { status, funding_method } \| null` (null = no payment record yet). Every job read carries `dispute_state` and `display_status` (`disputed` while a dispute is open, otherwise `status`; migration 0063) |
+| `GET /jobs/:id` 🔒 | job detail; for the job's client and assigned provider it includes `escrow: { status, funding_method } \| null` (null = no payment record yet). Every job read carries `dispute_state` and `display_status` (`disputed` while a dispute is open, otherwise `status`; migration 0063), plus `cancellation_reason` when a provider declined the booking (0078) |
 | `POST /jobs/:id/cancel` 🔒 (client) | any pre-completion state → `cancelled` |
 | `POST /jobs/:id/accept` 🔒 (provider) | `{ address?, latitude?, longitude?, location_reference? }` — accept an incoming booking request; `assigned` → `confirmed`, notifies the client (migration 0018). A signed location reference is preferred over client-supplied coordinates |
 | `POST /jobs/:id/start` 🔒 (provider) | `assigned`/`confirmed` → `in_progress` |
-| `POST /jobs/:id/decline` 🔒 (provider) | `{ reason (1–200) }` — assigned provider declines before starting; `assigned`/`confirmed` → `cancelled`, refunds escrow, notifies client |
+| `POST /jobs/:id/decline` 🔒 (provider) | `{ reason (1–200) }` — assigned provider declines before starting; `assigned`/`confirmed` → `cancelled`, saves `cancellation_reason`, refunds escrow, notifies client (0078) |
 | `PATCH /jobs/:id/tasks/:taskId` 🔒 (provider) | `{ is_done, proof_photo_paths? }` — assigned provider ticks a checklist item; allowed only while `in_progress`. Ticking done needs 1–4 proof photos uploaded to the `task-proof` bucket (migration 0059); un-ticking clears them. Returns the whole job; each task carries `proof_photo_urls` for both sides |
 | `POST /jobs/:id/complete` 🔒 (client) | `in_progress` → `completed`; releases the payment to the provider at once unless a complaint is open (migration 0060) |
 | `POST /jobs/:id/recommendations/trigger` 🔒 (client) | manually re-run the recommendation engine. A cold or rate-limited scorer is retried once; if still unavailable, returns `503` with “The matching service is waking up. Try again in a minute.” The attempt remains stamped for the scheduler retry. |
@@ -412,7 +417,7 @@ All bodies are JSON. 🔒 = requires auth; (client) / (provider) = role-restrict
 | `PUT /payouts/account` 🔒 (provider) | `{ method: gcash\|maya\|bank, bank_code? (bank only, from `GET /payouts/banks`), account_name, account_number (6–20 digits) }` — also sends any payout that was waiting for an account |
 | `DELETE /payouts/account` 🔒 (provider) | unlink |
 | `GET /payouts/banks` 🔒 | banks a payout can go to, `[{ code, name }]` |
-| `GET /conversations` 🔒 | caller's conversations (counterpart name + last-message time) |
+| `GET /conversations` 🔒 | caller's conversations (counterpart name, last-message time, `last_message_body`, `last_message_has_attachment`, `last_message_sender_id`, and `unread_count`). A single service-role RPC reads the newest message for the full conversation list; this does not mark messages read (0061, 0079) |
 | `POST /conversations` 🔒 | get-or-create for `{ job_id }` — job must have an assigned provider |
 | `GET /conversations/:id/messages` 🔒 | messages, oldest first |
 | `POST /conversations/:id/messages` 🔒 | send `{ body (1–1000)?, attachment_path? }` — at least one of the two is required. `attachment_path` must be a `chat-attachments` path from `POST /uploads/signed-url`, owned by the sender, and already uploaded as a non-empty image (400 otherwise) |

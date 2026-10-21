@@ -2115,6 +2115,25 @@ proposal blocked while payment is unresolved and only offers a new checkout afte
 This migration has local SQL coverage; it must still be applied and exercised against the Xendit
 sandbox before release.
 
+#### Backend handoff follow-up (migrations 0078–0079)
+
+`jobs.cancellation_reason` stores the provider's reason from
+`POST /jobs/:id/decline`. It is nullable, limited to 200 characters, and remains null for
+client-initiated cancellation. `GET /jobs/:id` returns it through the existing `jobs.*` selection.
+
+`GET /conversations` adds `last_message_body`, `last_message_has_attachment`, and
+`last_message_sender_id` to each row. Migration 0079 adds the service-role-only
+`latest_conversation_messages(uuid[])` RPC. It returns at most one row per requested conversation,
+choosing by `created_at DESC, id DESC`; conversations with no messages are represented by a null
+body and sender and a `false` attachment flag in the API response. The read does not modify
+`messages.read_at` or unread counts.
+
+Hire payment status now uses the attempt re-read after Xendit reconciliation. When reconciliation
+finds an invoice expired or failed, `POST /payments/hire-checkout-session` can create a fresh
+invoice; a still-pending attempt continues to reuse its existing URL. These changes have local
+unit and SQL coverage. Migrations 0078–0079 and live Xendit behavior still require verification in
+the target environment.
+
 **Captured immediately, not authorised.** Card authorisations lapse after about a week, and jobs
 are booked further out than that. A captured charge in the platform balance is also what the
 provider's transfer is sourced from (§29.5).

@@ -493,6 +493,7 @@ export class JobsService {
     }
     const updated = await this.setStatus(jobId, 'cancelled', PRE_START, {
       cancelled_by: user.id,
+      cancellation_reason: dto.reason,
     });
     // Release the hold back to the client, same as a client-initiated cancel.
     await this.escrow.cancelForJob(jobId);

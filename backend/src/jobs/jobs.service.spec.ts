@@ -313,6 +313,7 @@ describe('JobsService job payloads', () => {
         ok(
           job({
             client_id: 'c1',
+            cancellation_reason: 'Provider declined',
             assigned_provider: {
               id: 'p1',
               full_name: 'Provider One',
@@ -329,6 +330,7 @@ describe('JobsService job payloads', () => {
     expect(result.assigned_provider).toMatchObject({
       avatar_url: 'https://cdn.test/provider.jpg',
     });
+    expect(result.cancellation_reason).toBe('Provider declined');
     const select = calls.find(
       (call) => call.table === 'jobs' && call.method === 'select',
     );
@@ -351,6 +353,14 @@ describe('JobsService.decline', () => {
     await service.decline(provider, 'j1', { reason: 'Double booked' });
 
     expect(cancelForJob).toHaveBeenCalledWith('j1');
+    const update = calls.find(
+      (call) => call.table === 'jobs' && call.method === 'update',
+    );
+    expect(update?.args[0]).toMatchObject({
+      status: 'cancelled',
+      cancelled_by: 'p1',
+      cancellation_reason: 'Double booked',
+    });
     const notification = calls.find((c) => c.table === 'notifications');
     expect(notification?.args[0]).toMatchObject({
       recipient_id: 'c1',
@@ -955,6 +965,29 @@ describe('JobsService.complete', () => {
 });
 
 describe('JobsService.cancel', () => {
+  it('leaves cancellation_reason unset for a client cancellation', async () => {
+    const { service, calls } = createService({
+      jobs: [
+        ok(job({ client_id: 'c1', status: 'confirmed' })),
+        ok(
+          job({
+            client_id: 'c1',
+            status: 'cancelled',
+            cancellation_reason: null,
+          }),
+        ),
+      ],
+    });
+
+    const result = await service.cancel({ id: 'c1' } as Profile, 'j1');
+
+    expect(result.cancellation_reason).toBeNull();
+    expect(
+      calls.find((call) => call.table === 'jobs' && call.method === 'update')
+        ?.args[0],
+    ).toEqual({ status: 'cancelled', cancelled_by: 'c1' });
+  });
+
   it('refunds nothing when a concurrent completion already moved the job', async () => {
     const { service, cancelForJob } = createService({
       jobs: [ok(job({ client_id: 'c1', status: 'in_progress' })), ok(null)],

@@ -383,3 +383,99 @@ describe('ChatService chat alerts (0061)', () => {
     });
   });
 });
+
+describe('ChatService.listConversations', () => {
+  const conversations = [
+    {
+      id: 'c1',
+      job_id: 'j1',
+      client_id: 'u1',
+      provider_id: 'u2',
+      last_message_at: '2026-10-20T10:00:00Z',
+      created_at: '2026-10-19T10:00:00Z',
+      jobs: { title: 'Haircut', status: 'assigned' },
+      client: { full_name: 'Ana', avatar_url: null },
+      provider: { full_name: 'Bea', avatar_url: null },
+    },
+    {
+      id: 'c2',
+      job_id: 'j2',
+      client_id: 'u1',
+      provider_id: 'u3',
+      last_message_at: null,
+      created_at: '2026-10-18T10:00:00Z',
+      jobs: { title: 'Makeup', status: 'assigned' },
+      client: { full_name: 'Ana', avatar_url: null },
+      provider: { full_name: 'Cara', avatar_url: null },
+    },
+  ];
+
+  it('returns the latest message preview and existing unread count using one RPC read', async () => {
+    const { supabase, from, rpc } = createSupabaseMock({
+      conversations: [ok(conversations)],
+      'rpc:chat_unread_counts': [ok([{ conversation_id: 'c1', unread: 3 }])],
+      'rpc:latest_conversation_messages': [
+        ok([
+          {
+            conversation_id: 'c1',
+            last_message_body: 'See you soon',
+            last_message_has_attachment: false,
+            last_message_sender_id: 'u2',
+          },
+        ]),
+      ],
+    });
+    const service = newChatService(supabase, createUploadsMock());
+
+    const result = await service.listConversations({ id: 'u1' } as any);
+
+    expect(result).toMatchObject([
+      {
+        id: 'c1',
+        unread_count: 3,
+        last_message_body: 'See you soon',
+        last_message_has_attachment: false,
+        last_message_sender_id: 'u2',
+      },
+      {
+        id: 'c2',
+        unread_count: 0,
+        last_message_body: null,
+        last_message_has_attachment: false,
+        last_message_sender_id: null,
+      },
+    ]);
+    expect(rpc).toHaveBeenCalledWith('latest_conversation_messages', {
+      p_conversation_ids: ['c1', 'c2'],
+    });
+    expect(rpc).toHaveBeenCalledTimes(2);
+    expect(from).toHaveBeenCalledTimes(1);
+    expect(from).toHaveBeenCalledWith('conversations');
+  });
+
+  it('marks a photo-only latest message as an attachment', async () => {
+    const { supabase } = createSupabaseMock({
+      conversations: [ok([conversations[0]])],
+      'rpc:chat_unread_counts': [ok([])],
+      'rpc:latest_conversation_messages': [
+        ok([
+          {
+            conversation_id: 'c1',
+            last_message_body: '',
+            last_message_has_attachment: true,
+            last_message_sender_id: 'u1',
+          },
+        ]),
+      ],
+    });
+    const service = newChatService(supabase, createUploadsMock());
+
+    const [result] = await service.listConversations({ id: 'u1' } as any);
+
+    expect(result).toMatchObject({
+      last_message_body: '',
+      last_message_has_attachment: true,
+      last_message_sender_id: 'u1',
+    });
+  });
+});
