@@ -10,7 +10,7 @@ import type { UploadsService } from '../uploads/uploads.service';
 type QueryResult = {
   data: unknown;
   count?: number;
-  error: { message: string } | null;
+  error: { message: string; code?: string } | null;
 };
 
 /** Same chainable stand-in as admin.service.spec.ts. */
@@ -477,5 +477,34 @@ describe('ChatService.listConversations', () => {
       last_message_has_attachment: true,
       last_message_sender_id: 'u1',
     });
+  });
+
+  it('keeps conversations available when the preview RPC is not in the schema cache', async () => {
+    const { supabase, rpc } = createSupabaseMock({
+      conversations: [ok([conversations[0]])],
+      'rpc:chat_unread_counts': [ok([{ conversation_id: 'c1', unread: 2 }])],
+      'rpc:latest_conversation_messages': [
+        {
+          data: null,
+          error: {
+            code: 'PGRST202',
+            message:
+              'Could not find the function public.latest_conversation_messages in the schema cache',
+          },
+        },
+      ],
+    });
+    const service = newChatService(supabase, createUploadsMock());
+
+    const [result] = await service.listConversations({ id: 'u1' } as any);
+
+    expect(result).toMatchObject({
+      id: 'c1',
+      unread_count: 2,
+      last_message_body: null,
+      last_message_has_attachment: false,
+      last_message_sender_id: null,
+    });
+    expect(rpc).toHaveBeenCalledTimes(2);
   });
 });
