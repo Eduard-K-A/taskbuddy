@@ -384,6 +384,9 @@ describe('caseView: actions copy', () => {
 
   it('labels the sheet for adding details or for an appeal', () => {
     expect(caseView(base, CLIENT, BEFORE_DEADLINE).sheetTitle).toBe('Add to your case');
+    expect(caseView(base, CLIENT, BEFORE_DEADLINE).sheetIntro).toBe(
+      "Add anything new the admin should know, with photos if you have them. If you disagree with the admin's decision, you can appeal once the case is closed.",
+    );
     const closed = caseView({ ...base, status: 'resolved', resolved_at: RESOLVED, resolution: 'reviewed' }, CLIENT, BEFORE_DEADLINE);
     expect(closed.sheetTitle).toBe('Appeal this decision');
     expect(closed.sheetIntro).toBe("An appeal reopens review. It does not reverse payments that were already settled.");

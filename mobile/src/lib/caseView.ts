@@ -359,7 +359,7 @@ export function caseView(dispute: CaseDispute, me: string | null | undefined, no
     },
     sheetTitle: isOpen ? 'Add to your case' : 'Appeal this decision',
     sheetIntro: isOpen
-      ? 'Describe your position. You can add photos below.'
+      ? "Add anything new the admin should know, with photos if you have them. If you disagree with the admin's decision, you can appeal once the case is closed."
       : 'An appeal reopens review. It does not reverse payments that were already settled.',
   };
 }

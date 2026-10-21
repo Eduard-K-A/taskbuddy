@@ -35,7 +35,6 @@ export default function HODisputeStatusScreen({ jobId, onBack, onMessage }: Prop
   const { profile } = useAuth();
   const { data: dispute, loading, error, reload } = useAsyncData(() => jobId ? api.jobDispute(jobId) : Promise.resolve(null), [jobId]);
   const [body, setBody] = useState('');
-  const [kind, setKind] = useState<'statement' | 'appeal'>('statement');
   // Photos for the next statement or appeal (device URIs, uploaded on send).
   const [photos, setPhotos] = useState<string[]>([]);
   const [busy, setBusy] = useState(false);
@@ -59,8 +58,8 @@ export default function HODisputeStatusScreen({ jobId, onBack, onMessage }: Prop
         urls: entry.photo_urls!,
       })),
   ] : [];
-  // Statement or appeal: the segment only applies while the case is open and not awaiting a response.
-  const entryKind = open ? kind : 'appeal';
+  // An open case takes details; an appeal is only for a closed case, where it reopens review.
+  const entryKind = open ? 'statement' : 'appeal';
   const sendLabel = entryKind === 'appeal' ? 'Send appeal' : 'Send details';
   const noNote = busy || !cleanText(body);
   // The note is required, so spaces alone are refused; the message shows once the field is left.
@@ -74,7 +73,7 @@ export default function HODisputeStatusScreen({ jobId, onBack, onMessage }: Prop
       else {
         const photo_paths = await Promise.all(photos.map((uri) => api.uploadImage('dispute-evidence', uri)));
         await api.addDisputeEntry(dispute.id, {
-          kind: dispute.status === 'open' ? kind : 'appeal', body: cleanText(body),
+          kind: dispute.status === 'open' ? 'statement' : 'appeal', body: cleanText(body),
           photo_paths: photo_paths.length ? photo_paths : undefined,
         });
       }
@@ -192,10 +191,6 @@ export default function HODisputeStatusScreen({ jobId, onBack, onMessage }: Prop
     {!canRespond && view && <SheetFrame visible={sheetOpen} onClose={busy ? undefined : () => setSheetOpen(false)} contentStyle={styles.sheet}>
       <Text style={styles.sheetTitle} accessibilityRole="header">{view.sheetTitle}</Text>
       <Text style={styles.text}>{view.sheetIntro}</Text>
-      {open && !pending && <View style={styles.segment}>
-        <Tap style={[styles.segmentItem, kind === 'statement' && styles.segmentItemOn]} onPress={() => setKind('statement')} accessibilityRole="radio" accessibilityState={{ checked: kind === 'statement' }} activeOpacity={0.85}><Text style={[styles.segmentText, kind === 'statement' && styles.segmentTextOn]}>Details</Text></Tap>
-        <Tap style={[styles.segmentItem, kind === 'appeal' && styles.segmentItemOn]} onPress={() => setKind('appeal')} accessibilityRole="radio" accessibilityState={{ checked: kind === 'appeal' }} activeOpacity={0.85}><Text style={[styles.segmentText, kind === 'appeal' && styles.segmentTextOn]}>Appeal</Text></Tap>
-      </View>}
       <TextField
         label="What else should the admin know?" value={body} onChangeText={setBody} helper={`${body.length} / 1000`} error={noteError}
         placeholder="Explain what happened…" multiline maxLength={1000} keyboardAppearance={appearance}
@@ -271,11 +266,6 @@ function createThemedStyles(theme: ThemePalette) {
     text: { color: C.ink500, fontSize: 14, lineHeight: 21, fontFamily: 'Inter' },
     sheet: { gap: 14, paddingHorizontal: 20, paddingTop: 4 },
     sheetTitle: { color: C.ink900, fontSize: 20, fontWeight: '700', lineHeight: 26, fontFamily: 'Inter' },
-    segment: { flexDirection: 'row', padding: 4, borderRadius: 12, backgroundColor: C.ink100, gap: 4 },
-    segmentItem: { flex: 1, minHeight: 40, alignItems: 'center', justifyContent: 'center', borderRadius: 9 },
-    segmentItemOn: { backgroundColor: C.surface, ...V6Shadows.sm },
-    segmentText: { color: C.ink500, fontSize: 14.5, fontWeight: '600', fontFamily: 'Inter' },
-    segmentTextOn: { color: C.ink900, fontWeight: '700' },
     linkButton: { minHeight: 48, alignItems: 'center', justifyContent: 'center' },
     linkText: { color: Colors.link, fontSize: 14, fontWeight: '600', lineHeight: 18, fontFamily: 'Inter' },
     linkTextDisabled: { color: C.ink500 },
