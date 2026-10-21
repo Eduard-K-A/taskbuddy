@@ -20,6 +20,7 @@ jest.mock('../../../../src/lib/api', () => ({
     triggerRecommendations: jest.fn(),
     jobChangeRequests: jest.fn().mockResolvedValue([]),
     decideJobChange: jest.fn(),
+    notifications: jest.fn(),
   },
   ApiError: class ApiError extends Error {
     status?: number;
@@ -1177,5 +1178,50 @@ describe('HOJobDetailScreen — date or time change requests', () => {
     render(<HOJobDetailScreen jobId="job-1" onBack={jest.fn()} onNavigate={jest.fn()} />);
     await screen.findByText('Fix the sink');
     expect(screen.queryByText('Change date or time')).toBeNull();
+  });
+});
+
+describe('HOJobDetailScreen — a booking the provider declined', () => {
+  const declinedJob = { ...inProgressJob, status: 'cancelled' as const, cancelled_by: 'provider-1' };
+  const declineNote = {
+    id: 'n1', type: 'job_update', title: 'Booking declined',
+    body: 'Jane Provider declined "Fix the sink": Family emergency. Sorry!',
+    read_at: null, created_at: new Date().toISOString(), data: { job_id: 'job-1' },
+  };
+  beforeEach(() => {
+    jest.clearAllMocks();
+    (api.getJob as jest.Mock).mockResolvedValue(declinedJob);
+    (api.getProvider as jest.Mock).mockResolvedValue({ profile_id: 'provider-1', profiles: { full_name: 'Jane Provider' }, cached_completed_jobs: 1 });
+    (api.jobDispute as jest.Mock).mockResolvedValue(null);
+    // An earlier describe leaves a schedule request that renders its own "Reason:" line.
+    (api.jobChangeRequests as jest.Mock).mockResolvedValue([]);
+    (api.notifications as jest.Mock).mockResolvedValue([declineNote]);
+  });
+
+  it('names the provider and shows their reason from the decline notification', async () => {
+    render(<HOJobDetailScreen jobId="job-1" onBack={jest.fn()} onNavigate={jest.fn()} />);
+    expect(await screen.findByText('Jane Provider declined this booking')).toBeTruthy();
+    expect(screen.getByText(/Reason: Family emergency\. Sorry!/)).toBeTruthy();
+  });
+
+  it('uses the reason saved on the job when the API sends it, without reading notifications', async () => {
+    (api.getJob as jest.Mock).mockResolvedValue({ ...declinedJob, cancellation_reason: 'Tools broke' });
+    render(<HOJobDetailScreen jobId="job-1" onBack={jest.fn()} onNavigate={jest.fn()} />);
+    expect(await screen.findByText(/Reason: Tools broke/)).toBeTruthy();
+    expect(api.notifications).not.toHaveBeenCalled();
+  });
+
+  it('still names the provider when the notifications cannot be read', async () => {
+    (api.notifications as jest.Mock).mockRejectedValue(new Error('offline'));
+    render(<HOJobDetailScreen jobId="job-1" onBack={jest.fn()} onNavigate={jest.fn()} />);
+    expect(await screen.findByText('Jane Provider declined this booking')).toBeTruthy();
+    expect(screen.queryByText(/Reason:/)).toBeNull();
+  });
+
+  it('a job the client cancelled reads as before, and no notifications are read', async () => {
+    (api.getJob as jest.Mock).mockResolvedValue({ ...declinedJob, cancelled_by: 'client-1' });
+    render(<HOJobDetailScreen jobId="job-1" onBack={jest.fn()} onNavigate={jest.fn()} />);
+    expect(await screen.findByText('Job cancelled')).toBeTruthy();
+    expect(api.notifications).not.toHaveBeenCalled();
   });
 });

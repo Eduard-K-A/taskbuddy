@@ -16,15 +16,21 @@ export type PhotoCardProps = {
   /** Read by screen readers on the action button, e.g. "Retake selfie". The action shows only with `onRetake`. */
   retakeLabel?: string;
   onRetake?: () => void;
+  /** Opens the photo full screen. The photo is tappable only with a photo and this handler. */
+  onView?: () => void;
 };
 
-/** A photo the provider has added: the photo, a tick with its name, and a Retake button. */
-export default function PhotoCard({ title, uri, note, actionLabel = 'Retake', retakeLabel, onRetake }: PhotoCardProps) {
+/** A photo the provider has added: the photo (tap to view it full screen), a tick with its name, and a Retake button. */
+export default function PhotoCard({ title, uri, note, actionLabel = 'Retake', retakeLabel, onRetake, onView }: PhotoCardProps) {
   const { s, c } = useThemedStyles(createStyles);
   return (
     <View style={s.card}>
       <View style={s.frame}>
-        {uri ? (
+        {uri && onView ? (
+          <Tap onPress={onView} style={s.image} accessibilityRole="imagebutton" accessibilityLabel={`View ${title} photo`}>
+            <Image source={{ uri }} style={s.image} resizeMode="cover" accessibilityLabel={`${title} photo`} />
+          </Tap>
+        ) : uri ? (
           <Image source={{ uri }} style={s.image} resizeMode="cover" accessibilityLabel={`${title} photo`} />
         ) : (
           <View style={s.placeholder} accessible={false}>

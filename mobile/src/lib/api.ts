@@ -420,6 +420,10 @@ export interface Job {
   assigned_provider_id: string | null;
   assigned_at: string | null;
   completed_at: string | null;
+  /** Who cancelled (migration 0041): the client's or the hired provider's profile id. */
+  cancelled_by?: string | null;
+  /** The provider's reason for declining. Absent until the backend stores it (docs/backend-handoff-oct21-feedback-2026-10-21.md). */
+  cancellation_reason?: string | null;
   /** Server deadline; absent on API versions before migration 0040. */
   warranty_expires_at?: string | null;
   /** Pricing/scheduling/photos — backend columns, migration 0007. */
@@ -687,6 +691,14 @@ export interface Conversation {
   created_at: string;
   /** Messages from the other person not read yet (migration 0061). */
   unread_count?: number;
+  /**
+   * The newest message, for the list preview. Absent on an API that predates
+   * docs/backend-handoff-oct21-feedback-2026-10-21.md (the row then shows no preview);
+   * the sender is null when the chat has no messages yet.
+   */
+  last_message_body?: string | null;
+  last_message_has_attachment?: boolean;
+  last_message_sender_id?: string | null;
 }
 
 export interface Message {

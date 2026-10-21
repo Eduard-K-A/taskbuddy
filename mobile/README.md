@@ -713,6 +713,8 @@ Done button, so it can no longer start a second charge. The wallet also supports
 
 ## Remaining Backend Work
 
+> **2026-10-21 feedback round:** three backend items: Xendit hire checkout recovery after an abandoned invoice (BH-1), the last message on `GET /conversations` for the chat list preview (BH-2), and storing the provider's decline reason on the job (BH-3) — see [`docs/backend-handoff-oct21-feedback-2026-10-21.md`](../docs/backend-handoff-oct21-feedback-2026-10-21.md).
+
 > **2026-10-20 feedback round:** Leave-a-review needs `assigned_provider.avatar_url` on the job payload — see [`docs/backend-handoff-avatars-2026-10-20.md`](../docs/backend-handoff-avatars-2026-10-20.md).
 
 > **2026-10-19 smoke run:** one backend bug stops an admin-approved provider from applying in the app

@@ -8,12 +8,13 @@ import { useRefreshOnForeground } from '../hooks/useRefreshOnForeground';
 import { useHeaderTop } from '../hooks/useHeaderTop';
 import { subscribeChatUnread } from '../hooks/useChatUnread';
 import { api, type Conversation } from '../lib/api';
-import { initials, jobStatusMeta, timeAgo } from '../lib/format';
+import { initials, timeAgo } from '../lib/format';
 import {
   CONVERSATION_FILTERS, SEARCH_THRESHOLD, applyConversationFilters, conversationSections, countUnreadChats,
-  effectiveStatus, emptyCopy, matchesFilter, serviceCounts, unreadOutsideFilter, type ConversationFilter, type ConversationItem,
+  emptyCopy, matchesFilter, serviceCounts, unreadOutsideFilter, type ConversationFilter, type ConversationItem,
 } from '../lib/conversationFilters';
 import { isList } from '../lib/savedShapes';
+import { lastMessagePreview, professionFor } from '../lib/conversationPreview';
 import ContentSkeleton from './ui/ContentSkeleton';
 import EmptyCard from './ui/EmptyCard';
 import EmptyRow from './ui/EmptyRow';
@@ -25,14 +26,16 @@ import Tap from './ui/Tap';
 /**
  * The Messages tab, for clients and providers alike: every job conversation,
  * most recent first, sorted into Active / Unread / Finished / All with an
- * optional service filter and search. Tapping one opens that job's chat.
+ * optional service filter and search. Each row shows the newest message (when the API sends it),
+ * the provider's trade for a client (the booked service for a provider) and the job title.
+ * Tapping one opens that job's chat.
  * Service names come from the same job list My Jobs uses (same cache key);
  * if that fails the service chips and labels are simply left out.
  */
 export default function ConversationsScreen({ onOpenChat }: { onOpenChat: (jobId: string) => void }) {
   const { s, c, V6 } = useThemedStyles(createStyles);
   const headerTop = useHeaderTop();
-  const { role } = useAuth();
+  const { role, profile } = useAuth();
   const isProvider = role === 'provider';
   // In-memory cache only (chat data is never saved to the device), so a revisit shows the last list at once.
   const conversations = useAsyncData(() => api.conversations(), [], 'conversations');
@@ -169,8 +172,9 @@ export default function ConversationsScreen({ onOpenChat }: { onOpenChat: (jobId
             {!!section.title && <Text style={s.sectionTitle} accessibilityRole="header">{section.title}</Text>}
             {section.data.map((item) => {
               const unread = item.unread_count ?? 0;
-              const status = effectiveStatus(item);
-              const meta = status ? jobStatusMeta(status, V6) : null;
+              // A client sees the provider's trade for this job; a provider sees which service the client booked.
+              const tag = isProvider ? item.service : professionFor(item.service);
+              const preview = lastMessagePreview(item, profile?.id);
               return (
                 <Tap
                   key={item.id}
@@ -188,15 +192,22 @@ export default function ConversationsScreen({ onOpenChat }: { onOpenChat: (jobId
                     </View>
                   )}
                   <View style={s.text}>
-                    <Text style={[s.name, unread > 0 && s.unreadText]} numberOfLines={1}>{item.counterpart_name ?? 'TaskBuddy user'}</Text>
-                    <Text style={[s.job, unread > 0 && s.unreadJob]} numberOfLines={1}>
-                      {`${item.service ? `${item.service} · ` : ''}${item.job_title ?? 'Job'}`}
-                    </Text>
-                    {meta && (
-                      <View style={[s.pill, { backgroundColor: meta.bg }]} testID={`conversation-status-${item.id}`}>
-                        <Text style={[s.pillText, { color: meta.color }]}>{meta.label}</Text>
-                      </View>
+                    <View style={s.nameRow}>
+                      <Text style={[s.name, unread > 0 && s.unreadText]} numberOfLines={1}>{item.counterpart_name ?? 'TaskBuddy user'}</Text>
+                      {!!tag && (
+                        <View style={s.pill} testID={`conversation-tag-${item.id}`}>
+                          <Text style={s.pillText} numberOfLines={1}>{tag}</Text>
+                        </View>
+                      )}
+                    </View>
+                    {preview !== null && (
+                      <Text style={[s.preview, unread > 0 && s.unreadPreview]} numberOfLines={1} testID={`conversation-preview-${item.id}`}>
+                        {preview}
+                      </Text>
                     )}
+                    <Text style={[s.job, unread > 0 && preview === null && s.unreadJob]} numberOfLines={1}>
+                      {item.job_title ?? 'Job'}
+                    </Text>
                   </View>
                   <View style={s.meta}>
                     <Text style={[s.time, unread > 0 && s.unreadTime]}>{timeAgo(item.last_message_at ?? item.created_at)}</Text>
@@ -240,8 +251,9 @@ const createStyles = ({ Colors, V6Colors }: Palette) => ({
     content: { padding: 16, gap: 10 },
     section: { gap: 10 },
     sectionTitle: { color: V6Colors.ink500, fontSize: 12.5, fontWeight: '700', fontFamily: 'Inter', textTransform: 'uppercase', letterSpacing: 0.4, marginTop: 4 },
-    pill: { alignSelf: 'flex-start', marginTop: 5, paddingHorizontal: 8, paddingVertical: 2, borderRadius: 999 },
-    pillText: { fontSize: 11.5, fontWeight: '700', fontFamily: 'Inter' },
+    nameRow: { flexDirection: 'row', alignItems: 'center', gap: 6 },
+    pill: { flexShrink: 0, maxWidth: '45%', paddingHorizontal: 8, paddingVertical: 2, borderRadius: 999, backgroundColor: Colors.primaryTonal },
+    pillText: { color: Colors.primary, fontSize: 11.5, fontWeight: '700', fontFamily: 'Inter' },
     row: {
       flexDirection: 'row', alignItems: 'center', gap: 12, padding: 14, borderRadius: 16,
       borderWidth: 1, borderColor: V6Colors.line, backgroundColor: V6Colors.surface,
@@ -250,8 +262,10 @@ const createStyles = ({ Colors, V6Colors }: Palette) => ({
     avatarFallback: { backgroundColor: Colors.primaryTonal, alignItems: 'center', justifyContent: 'center' },
     avatarText: { color: Colors.primary, fontWeight: '700', fontFamily: 'Inter' },
     text: { flex: 1 },
-    name: { color: V6Colors.ink900, fontSize: 15.5, fontWeight: '600', fontFamily: 'Inter' },
-    job: { color: V6Colors.ink500, fontSize: 13.5, fontFamily: 'Inter', marginTop: 2 },
+    name: { flexShrink: 1, color: V6Colors.ink900, fontSize: 15.5, fontWeight: '600', fontFamily: 'Inter' },
+    preview: { color: V6Colors.ink700, fontSize: 13.5, fontFamily: 'Inter', marginTop: 2 },
+    unreadPreview: { color: V6Colors.ink900, fontWeight: '700' },
+    job: { color: V6Colors.ink500, fontSize: 12.5, fontFamily: 'Inter', marginTop: 2 },
     time: { color: V6Colors.ink500, fontSize: 12.5, fontFamily: 'Inter' },
     meta: { alignItems: 'flex-end', gap: 6 },
     unreadText: { fontWeight: '800' },

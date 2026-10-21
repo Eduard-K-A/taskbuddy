@@ -416,6 +416,20 @@ async function toReview() {
 }
 
 describe('SPVerificationScreen — review and send', () => {
+  it('opens each review photo full screen, and Close goes back to the review', async () => {
+    await toReview();
+
+    fireEvent.press(screen.getByRole('imagebutton', { name: 'View Front photo' }));
+    expect(screen.getByTestId('full-photo').props.source.uri).toBe('file:///id.jpg');
+    expect(screen.getByText('1 / 2')).toBeTruthy();
+    fireEvent.press(screen.getByLabelText('Close photo'));
+    await waitFor(() => expect(screen.queryByTestId('full-photo')).toBeNull());
+
+    fireEvent.press(screen.getByRole('imagebutton', { name: 'View Selfie photo' }));
+    expect(screen.getByTestId('full-photo').props.source.uri).toBe('file:///selfie.jpg');
+    expect(screen.getByText('2 / 2')).toBeTruthy();
+  });
+
   it('shows both photos with their own Retake, and explains Stripe before anything opens', async () => {
     await toReview();
 

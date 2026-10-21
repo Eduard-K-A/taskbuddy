@@ -13,6 +13,7 @@ const base = { id: 'case', job_id: 'job', reason: 'Repair quality', details: nul
 const pendingCase = { ...base, escrow_transactions: { status: 'disputed', amount: 800 }, cancellation_state: 'pending',
   cancellation_deadline: new Date(Date.now() + 3600000).toISOString() };
 const SHEET_FIELD = 'What else should the admin know?';
+const OPEN_SHEET_INTRO = "Add anything new the admin should know, with photos if you have them. If you disagree with the admin's decision, you can appeal once the case is closed.";
 beforeEach(() => {
   jest.clearAllMocks();
   (api.jobDispute as jest.Mock).mockResolvedValue(base);
@@ -152,13 +153,16 @@ it('keeps Send disabled until the sheet has text', async () => {
   fireEvent.changeText(screen.getByLabelText(SHEET_FIELD), 'Some details');
   expect(screen.queryByRole('button', { name: 'Send details', disabled: true })).toBeNull();
 });
-it('lets an open case send an appeal from the sheet, labelled Send appeal', async () => {
+it('an open case has one kind of note: no Details/Appeal choice, and it sends details', async () => {
   show();
   await openDetailsSheet();
-  await act(async () => { fireEvent.press(screen.getByRole('radio', { name: 'Appeal' })); });
+  expect(screen.queryByRole('radio', { name: 'Appeal' })).toBeNull();
+  expect(screen.queryByRole('radio', { name: 'Details' })).toBeNull();
+  expect(screen.queryByText('Send appeal')).toBeNull();
+  expect(screen.getByText(OPEN_SHEET_INTRO)).toBeTruthy();
   fireEvent.changeText(screen.getByLabelText(SHEET_FIELD), 'Please look again');
-  await act(async () => { fireEvent.press(screen.getByText('Send appeal')); });
-  await waitFor(() => expect(api.addDisputeEntry).toHaveBeenCalledWith('case', expect.objectContaining({ kind: 'appeal', body: 'Please look again' })));
+  await act(async () => { fireEvent.press(screen.getByText('Send details')); });
+  await waitFor(() => expect(api.addDisputeEntry).toHaveBeenCalledWith('case', { kind: 'statement', body: 'Please look again' }));
 });
 it('Cancel closes the sheet and sends nothing', async () => {
   show();

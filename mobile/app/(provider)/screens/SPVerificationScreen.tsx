@@ -74,6 +74,7 @@ import ProtectSheet from '../../../src/components/verify/ProtectSheet';
 import CheckList from '../../../src/components/verify/CheckList';
 import IdExamples from '../../../src/components/verify/IdExamples';
 import PhotoCard from '../../../src/components/verify/PhotoCard';
+import PhotoViewer from '../../../src/components/PhotoViewer';
 import SendingChecklist from '../../../src/components/verify/SendingChecklist';
 import PendingTimeline from '../../../src/components/verify/PendingTimeline';
 import ContentSkeleton from '../../../src/components/ui/ContentSkeleton';
@@ -250,6 +251,8 @@ export default function SPVerificationScreen({ onBack, onEditProfile, onVerified
   const [certBusy, setCertBusy] = useState(false);
   /** The certificate photo picked on the wizard's certificate step; the review shows it. */
   const [certAsset, setCertAsset] = useState<{ uri: string } | null>(null);
+  // Which review photo is open full screen, or null.
+  const [reviewPhotoIndex, setReviewPhotoIndex] = useState<number | null>(null);
   /** Replace certificate was tapped on the review, so the upload form is shown even though one was sent. */
   const [certReplacing, setCertReplacing] = useState(false);
   const formRef = useRef<CertificateUploadFormHandle>(null);
@@ -542,6 +545,13 @@ export default function SPVerificationScreen({ onBack, onEditProfile, onVerified
   const chosenIdLabel = VERIFY_ID_TYPES.find((type) => type.value === documentType)?.label ?? 'ID';
   /** A passport's photo is of its photo page, not its front. */
   const idSideName = documentType === 'passport' ? 'Photo page' : 'Front';
+  // The review step's photos, in card order, for the full-screen viewer. A card with no photo is left out.
+  const reviewPhotos = [
+    ...(idAsset ? [{ uri: idAsset.uri, caption: idSideName }] : []),
+    ...(selfieAsset ? [{ uri: selfieAsset.uri, caption: 'Selfie' }] : []),
+    ...(newShape && certSent && certAsset ? [{ uri: certAsset.uri, caption: 'Certificate' }] : []),
+  ];
+  const viewReviewPhoto = (uri: string) => setReviewPhotoIndex(Math.max(0, reviewPhotos.findIndex((p) => p.uri === uri)));
 
   /** Why the bottom button is off, said in words above it; null when it is live. */
   const disabledReason: string | null =
@@ -845,6 +855,7 @@ export default function SPVerificationScreen({ onBack, onEditProfile, onVerified
                     <PhotoCard
                       title={idSideName}
                       uri={idAsset.uri}
+                      onView={() => viewReviewPhoto(idAsset.uri)}
                       retakeLabel="Retake ID photo"
                       onRetake={() => {
                         setIdPhase('tips');
@@ -856,6 +867,7 @@ export default function SPVerificationScreen({ onBack, onEditProfile, onVerified
                     <PhotoCard
                       title="Selfie"
                       uri={selfieAsset.uri}
+                      onView={() => viewReviewPhoto(selfieAsset.uri)}
                       retakeLabel="Retake selfie"
                       onRetake={() => setStep(2)}
                     />
@@ -865,6 +877,7 @@ export default function SPVerificationScreen({ onBack, onEditProfile, onVerified
                     <PhotoCard
                       title={`Certificate${targetName ? ` · ${targetName}` : ''}`}
                       uri={certSent ? (certAsset?.uri ?? null) : null}
+                      onView={certSent && certAsset ? () => viewReviewPhoto(certAsset.uri) : undefined}
                       note={targetState === 'approved' && !certSent ? 'Approved' : 'Sent for review'}
                       actionLabel="Replace"
                       retakeLabel="Replace certificate"
@@ -872,6 +885,12 @@ export default function SPVerificationScreen({ onBack, onEditProfile, onVerified
                     />
                   )}
                 </View>
+                <PhotoViewer
+                  photos={reviewPhotos}
+                  index={reviewPhotoIndex}
+                  onIndexChange={setReviewPhotoIndex}
+                  onClose={() => setReviewPhotoIndex(null)}
+                />
                 {newShape && (
                   <Text style={styles.stepHint} testID="verify-review-certificate">
                     {`Certificate${targetName ? ` for ${targetName}` : ''}: ${certSent ? 'sent for review' : targetState === 'approved' ? 'approved' : 'under review'}`}

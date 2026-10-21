@@ -5,6 +5,26 @@ app works today; this file covers how it got there and why. Newest first.
 
 ---
 
+## [High] Hire and pay — an abandoned Xendit checkout can be reopened
+
+Closing Xendit without paying left the proposal on "still confirming" and "Start a new payment" did nothing. When the browser never reported a payment, Start a new payment now ends the wait and brings the pay options back; paying again reopens the same open invoice (the server hands back its URL), so nothing is charged twice. A payment the browser reported as paid, or one under review, still blocks a second payment. The handler has a busy guard and shows errors (such as a 429) instead of dropping them. Reopening the sheet no longer forgets that the browser reported a payment. If the invoice has just expired, the API's one stray 409 on the next checkout is retried once. Backend follow-ups are BH-1 in `docs/backend-handoff-oct21-feedback-2026-10-21.md`.
+
+## [Medium] Messages — trade, last message and job title on each chat row
+
+Client rows show the provider's trade for the job (Plumber, Cleaner, Handyman, Manicurist, Pedicurist) instead of the job status; provider rows show the booked service. The job title moves to a small third line. Each row previews the newest message ("Sent a photo", "You: …") once `GET /conversations` sends `last_message_body`, `last_message_has_attachment` and `last_message_sender_id`; until then the preview line is left out (BH-2).
+
+## [Medium] Job detail — why the provider declined
+
+A booking the provider declined now reads "<name> declined this booking" with "Reason: …". The reason comes from `jobs.cancellation_reason` once the API stores it (BH-3); until then it is read from the "Booking declined" notification, which only covers the 50 newest notifications.
+
+## [Low] Complaints — no Details/Appeal choice on an open case
+
+On an open complaint the sheet always sends details; Appeal stays on closed cases, where it reopens review. The two choices did almost the same thing on an open case (Appeal only added an admin alert).
+
+## [Low] Get verified — review photos open full screen
+
+On the last step, tapping the ID, selfie or certificate photo opens it in the shared full-screen viewer.
+
 ## [High] Post job — a GPS or suggestion address posts at its pin
 
 The app now sends the signed `location_reference` that "Use my current location" and precise suggestions return, so `POST /jobs`

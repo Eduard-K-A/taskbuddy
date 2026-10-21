@@ -9,7 +9,7 @@ jest.mock('../../lib/api', () => ({
   api: { conversations: jest.fn(), myJobs: jest.fn(), assignedJobs: jest.fn() },
 }));
 let mockRole = 'homeowner';
-jest.mock('../../context/AuthContext', () => ({ useAuth: () => ({ role: mockRole }) }));
+jest.mock('../../context/AuthContext', () => ({ useAuth: () => ({ role: mockRole, profile: { id: 'me' } }) }));
 
 beforeEach(() => {
   jest.clearAllMocks();
@@ -101,12 +101,48 @@ it('defaults to Active, and the chips switch to Unread, Finished and All with se
   expect(screen.getByText('Person 3')).toBeTruthy();
 });
 
-it('shows the status pill with My Jobs wording', async () => {
-  (api.conversations as jest.Mock).mockResolvedValue(mixed());
+it("shows the provider's trade for the job instead of a job status", async () => {
+  (api.conversations as jest.Mock).mockResolvedValue([conv('1'), conv('2', { job_status: 'in_progress' })]);
+  (api.myJobs as jest.Mock).mockResolvedValue([
+    { id: 'job-1', service_categories: { name: 'Plumbing' } },
+    { id: 'job-2', service_categories: { name: 'Manicure' } },
+  ]);
+  render(<ConversationsScreen onOpenChat={jest.fn()} />);
+  expect(await screen.findByTestId('conversation-tag-1')).toHaveTextContent('Plumber');
+  expect(screen.getByTestId('conversation-tag-2')).toHaveTextContent('Manicurist');
+  expect(screen.queryByText('Confirmed')).toBeNull();
+  expect(screen.queryByText('In Progress')).toBeNull();
+});
+
+it('shows no tag when the job lookup failed', async () => {
+  (api.conversations as jest.Mock).mockResolvedValue([conv('1')]);
+  (api.myJobs as jest.Mock).mockRejectedValue(new Error('offline'));
   render(<ConversationsScreen onOpenChat={jest.fn()} />);
   await screen.findByText('Person 1');
-  expect(screen.getByTestId('conversation-status-1')).toHaveTextContent('Confirmed');
-  expect(screen.getByTestId('conversation-status-4')).toHaveTextContent('In Progress');
+  expect(screen.queryByTestId('conversation-tag-1')).toBeNull();
+});
+
+it('previews the newest message like other chat apps', async () => {
+  (api.conversations as jest.Mock).mockResolvedValue([
+    conv('1', { last_message_body: 'On my way', last_message_has_attachment: false, last_message_sender_id: 'them' }),
+    conv('2', { last_message_body: 'See you at 3', last_message_has_attachment: false, last_message_sender_id: 'me' }),
+    conv('3', { last_message_body: '', last_message_has_attachment: true, last_message_sender_id: 'them' }),
+    conv('4', { last_message_body: '', last_message_has_attachment: true, last_message_sender_id: 'me' }),
+  ]);
+  render(<ConversationsScreen onOpenChat={jest.fn()} />);
+  expect(await screen.findByTestId('conversation-preview-1')).toHaveTextContent('On my way');
+  expect(screen.getByTestId('conversation-preview-2')).toHaveTextContent('You: See you at 3');
+  expect(screen.getByTestId('conversation-preview-3')).toHaveTextContent('Sent a photo');
+  expect(screen.getByTestId('conversation-preview-4')).toHaveTextContent('You sent a photo');
+  expect(screen.getByText('Job 1')).toBeTruthy();
+});
+
+it('shows no preview line on an API that sends no last message, and keeps the job title', async () => {
+  (api.conversations as jest.Mock).mockResolvedValue([conv('1')]);
+  render(<ConversationsScreen onOpenChat={jest.fn()} />);
+  await screen.findByText('Person 1');
+  expect(screen.queryByTestId('conversation-preview-1')).toBeNull();
+  expect(screen.getByText('Job 1')).toBeTruthy();
 });
 
 it('shows service chips with counts and filters by service', async () => {
@@ -119,7 +155,8 @@ it('shows service chips with counts and filters by service', async () => {
   render(<ConversationsScreen onOpenChat={jest.fn()} />);
 
   expect(await screen.findByLabelText('Plumbing, 2')).toBeTruthy();
-  expect(await screen.findByText('Plumbing · Job 1')).toBeTruthy();
+  expect(await screen.findByTestId('conversation-tag-1')).toHaveTextContent('Plumber');
+  expect(screen.getByText('Job 1')).toBeTruthy();
   fireEvent.press(screen.getByLabelText('Cleaning, 1'));
   expect(screen.getByText('Person 3')).toBeTruthy();
   expect(screen.queryByText('Person 1')).toBeNull();
@@ -214,5 +251,6 @@ it('works for providers: uses assigned jobs and provider wording', async () => {
   expect(api.assignedJobs).toHaveBeenCalled();
   expect(api.myJobs).not.toHaveBeenCalled();
   fireEvent.press(screen.getByLabelText('Finished'));
-  expect(await screen.findByText('Plumbing · Job 2')).toBeTruthy();
+  expect(await screen.findByTestId('conversation-tag-2')).toHaveTextContent('Plumbing');
+  expect(screen.getByText('Job 2')).toBeTruthy();
 });
