@@ -309,7 +309,8 @@ function JobProposals({
         payment.payment_status === 'confirming' ||
         payment.payment_status === 'needs_review'
       ) {
-        await beginWait(app.id, false, payment.invoice_id ?? undefined);
+        // Keep what the browser reported earlier on this device: a return from Xendit's success page stays "paid".
+        await beginWait(app.id, getPendingHirePayment(app.id)?.returnedPaid ?? false, payment.invoice_id ?? undefined);
       }
     } catch (e) {
       // A failed read leaves the budget unknown. It must not fall through to the
@@ -439,6 +440,25 @@ function JobProposals({
     }
   };
 
+  /**
+   * Asks for the checkout of one proposal. The deployed API answers 409 "already being confirmed"
+   * for the one call that discovers an earlier invoice has just expired (backend handoff BH-1), and the
+   * next call works. So after such a 409 the app asks the server once, and retries if the payment was not paid.
+   * Verification and capacity 409s are real refusals and are never retried.
+   */
+  const openCheckout = async (applicationId: string, appRedirect: string) => {
+    const input = { application_id: applicationId, app_redirect: appRedirect };
+    try {
+      return await api.createHireCheckoutSession(input);
+    } catch (e) {
+      const conflict = (e as { status?: unknown } | null)?.status === 409;
+      if (!conflict || hireVerificationMessage(e) || capacityConflictMessage(e)) throw e;
+      const payment = await api.hirePaymentStatus({ application_id: applicationId }).catch(() => null);
+      if (payment?.payment_status !== 'not_paid') throw e;
+      return api.createHireCheckoutSession(input);
+    }
+  };
+
   const payByCard = async () => {
     if (hireInFlight.current) {
       showToast(HIRE_BUSY_MESSAGE, 'info');
@@ -452,10 +472,7 @@ function JobProposals({
       // exp://[ip]:8081/--/hire in Expo Go, taskbuddy://hire in a build —
       // the backend allowlists both.
       const appRedirect = AuthSession.makeRedirectUri({ scheme: 'taskbuddy', path: 'hire' });
-      const session = await api.createHireCheckoutSession({
-        application_id: hireTarget.id,
-        app_redirect: appRedirect,
-      });
+      const session = await openCheckout(hireTarget.id, appRedirect);
       // A checkout now exists, so a payment can be made. From here the proposal
       // waits until the server decides it, whatever the browser reports; only an
       // explicit cancel ends the wait. The wait is on the device before the browser opens.
@@ -520,27 +537,58 @@ function JobProposals({
     }
   };
 
-  /** The person chose to start over, so the pay options come back. */
+  /**
+   * The person chose to start over. A checkout the server still calls "confirming" that the
+   * browser never reported as paid is an open Xendit invoice: the pay options come back, and
+   * paying again reopens that same invoice (the server hands back its URL), so nothing is
+   * charged twice. A payment the browser reported as paid, or one under review, keeps the wait.
+   */
   const startNewPayment = async () => {
-    if (!awaitingConfirmation) return;
-    const payment = await api.hirePaymentStatus({
-      application_id: awaitingConfirmation.applicationId,
-      invoice_id: awaitingConfirmation.invoiceId,
-    });
-    if (
-      payment.application_status !== 'pending' ||
-      payment.payment_status === 'not_paid' ||
-      payment.payment_status === 'not_applied'
-    ) {
-      await endWait(awaitingConfirmation.applicationId);
-      reload();
-      setHireMessage(null);
+    if (hireInFlight.current) {
+      showToast(HIRE_BUSY_MESSAGE, 'info');
       return;
     }
-    setHireMessage({
-      text: 'This payment is still being confirmed. Please do not pay again yet.',
-      tone: 'info',
-    });
+    if (!awaitingConfirmation) return;
+    const waiting = awaitingConfirmation;
+    hireInFlight.current = true;
+    setHireBusy('check');
+    setHireMessage(null);
+    try {
+      const payment = await api.hirePaymentStatus({
+        application_id: waiting.applicationId,
+        invoice_id: waiting.invoiceId,
+      });
+      if (
+        payment.application_status !== 'pending' ||
+        payment.payment_status === 'not_paid' ||
+        payment.payment_status === 'not_applied' ||
+        payment.payment_status === 'not_found'
+      ) {
+        await endWait(waiting.applicationId);
+        reload();
+        return;
+      }
+      if (payment.payment_status === 'confirming' && !waiting.returnedPaid) {
+        await endWait(waiting.applicationId);
+        setHireMessage({ text: RESUME_CHECKOUT_MESSAGE, tone: 'info' });
+        return;
+      }
+      setHireMessage({
+        text:
+          payment.payment_status === 'needs_review'
+            ? 'Your payment needs review. Please do not pay again; check back later.'
+            : 'This payment is still being confirmed. Please do not pay again yet.',
+        tone: 'info',
+      });
+    } catch (e) {
+      setHireMessage({
+        text: e instanceof Error ? e.message : 'Something went wrong. Please try again.',
+        tone: 'error',
+      });
+    } finally {
+      hireInFlight.current = false;
+      setHireBusy(null);
+    }
   };
 
   const subline = hiredApp
@@ -891,6 +939,10 @@ const HIRE_POLL_INTERVAL_MS = 1500;
 
 /** Said when Confirm and hire is tapped again while the first hire is still being paid for. */
 const HIRE_BUSY_MESSAGE = "We're still processing your payment. Please wait a moment.";
+
+/** Said when Start a new payment finds the earlier Xendit checkout still open and not reported as paid. */
+const RESUME_CHECKOUT_MESSAGE =
+  "Your earlier checkout is still open. Paying now reopens that same checkout, so you can't be charged twice.";
 
 const CLOSED_LABEL: Record<JobApplication['status'], string> = {
   pending: 'Not selected',

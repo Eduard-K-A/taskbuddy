@@ -828,6 +828,188 @@ describe('HOJobApplicationsScreen: a card payment the server has not confirmed y
     expect(api.createHireCheckoutSession).toHaveBeenCalledTimes(2);
   });
 
+  const RESUME_CHECKOUT =
+    "Your earlier checkout is still open. Paying now reopens that same checkout, so you can't be charged twice.";
+  const NOT_FOUND_STATUS = { application_status: 'pending', payment_status: 'not_found', invoice_id: null };
+  const CONFIRMING_STATUS = { application_status: 'pending', payment_status: 'confirming', invoice_id: 'inv-1' };
+
+  /** Opens Start a new payment on the waiting sheet and confirms it. */
+  async function startOver() {
+    fireEvent.press(screen.getByRole('button', { name: 'Start a new payment' }));
+    fireEvent.press(await screen.findByRole('button', { name: 'Yes, start over' }));
+  }
+
+  it('an abandoned checkout the server still calls confirming is not a dead end: Start a new payment brings the pay options back', async () => {
+    // The sheet opens with nothing pending; after the browser closes, the unpaid invoice stays PENDING (confirming).
+    (api.hirePaymentStatus as jest.Mock).mockResolvedValueOnce(NOT_FOUND_STATUS).mockResolvedValue(CONFIRMING_STATUS);
+    (openRedirectSession as jest.Mock).mockResolvedValue({ type: 'cancel' });
+    await renderScreen();
+    await payByCard();
+    await passTime(FULL_WAIT_MS);
+    await screen.findByText(STILL_CONFIRMING);
+
+    await startOver();
+
+    expect(await screen.findByText(RESUME_CHECKOUT)).toBeTruthy();
+    expect(screen.queryByText(STILL_CONFIRMING)).toBeNull();
+    expect(await storedWaits()).toEqual({});
+
+    // Paying again asks the server for the checkout, which hands back the same open invoice.
+    fireEvent.press(await screen.findByRole('radio', { name: ONLINE }));
+    fireEvent.press(screen.getByRole('button', { name: 'Continue' }));
+    fireEvent.press(screen.getByRole('button', { name: 'Hire and pay ₱1,000.00' }));
+    await passTime(FULL_WAIT_MS);
+
+    expect(api.createHireCheckoutSession).toHaveBeenCalledTimes(2);
+    expect(openRedirectSession).toHaveBeenCalledTimes(2);
+  });
+
+  it('a payment the browser reported as paid still waits on Start a new payment, so it is never paid twice', async () => {
+    (api.hirePaymentStatus as jest.Mock).mockResolvedValueOnce(NOT_FOUND_STATUS).mockResolvedValue(CONFIRMING_STATUS);
+    (openRedirectSession as jest.Mock).mockResolvedValue({ type: 'success', url: 'taskbuddy://hire?hire=success' });
+    await renderScreen();
+    await payByCard();
+    await passTime(FULL_WAIT_MS);
+    await screen.findByText(STILL_CONFIRMING);
+
+    await startOver();
+
+    expect(await screen.findByText('This payment is still being confirmed. Please do not pay again yet.')).toBeTruthy();
+    expect(screen.getByText(STILL_CONFIRMING)).toBeTruthy();
+    expect(screen.queryByRole('radio', { name: ONLINE })).toBeNull();
+    expect(api.createHireCheckoutSession).toHaveBeenCalledTimes(1);
+  });
+
+  it('reopening the sheet keeps what the browser reported: a paid return still blocks a second payment', async () => {
+    (api.hirePaymentStatus as jest.Mock).mockResolvedValueOnce(NOT_FOUND_STATUS).mockResolvedValue(CONFIRMING_STATUS);
+    (openRedirectSession as jest.Mock).mockResolvedValue({ type: 'success', url: 'taskbuddy://hire?hire=success' });
+    await renderScreen();
+    await payByCard();
+    await passTime(FULL_WAIT_MS);
+    await screen.findByText(STILL_CONFIRMING);
+
+    fireEvent.press(screen.getByRole('button', { name: 'Close' }));
+    fireEvent.press(await screen.findByRole('button', { name: 'Hire Alex Reyes for this job' }));
+    await screen.findByText(STILL_CONFIRMING);
+    await startOver();
+
+    expect(await screen.findByText('This payment is still being confirmed. Please do not pay again yet.')).toBeTruthy();
+    expect(screen.queryByRole('radio', { name: ONLINE })).toBeNull();
+  });
+
+  it('a payment under review keeps the wait on Start a new payment, and says not to pay again', async () => {
+    (api.hirePaymentStatus as jest.Mock)
+      .mockResolvedValueOnce(NOT_FOUND_STATUS)
+      .mockResolvedValueOnce(CONFIRMING_STATUS)
+      .mockResolvedValue({ application_status: 'pending', payment_status: 'needs_review', invoice_id: 'inv-1' });
+    (openRedirectSession as jest.Mock).mockResolvedValue({ type: 'cancel' });
+    await renderScreen();
+    await payByCard();
+    await passTime(FULL_WAIT_MS);
+    await screen.findByText(STILL_CONFIRMING);
+
+    await startOver();
+
+    expect(await screen.findByText('Your payment needs review. Please do not pay again; check back later.')).toBeTruthy();
+    expect(screen.getByText(STILL_CONFIRMING)).toBeTruthy();
+    expect(screen.queryByRole('radio', { name: ONLINE })).toBeNull();
+  });
+
+  it('an invoice the server has no record of ends the wait on Start a new payment', async () => {
+    (api.hirePaymentStatus as jest.Mock)
+      .mockResolvedValueOnce(NOT_FOUND_STATUS)
+      .mockResolvedValueOnce(CONFIRMING_STATUS)
+      .mockResolvedValue(NOT_FOUND_STATUS);
+    (openRedirectSession as jest.Mock).mockResolvedValue({ type: 'cancel' });
+    await renderScreen();
+    await payByCard();
+    await passTime(FULL_WAIT_MS);
+    await screen.findByText(STILL_CONFIRMING);
+
+    await startOver();
+
+    expect(await screen.findByRole('radio', { name: ONLINE })).toBeTruthy();
+    expect(screen.queryByText(STILL_CONFIRMING)).toBeNull();
+    expect(await storedWaits()).toEqual({});
+  });
+
+  it('a failed status check on Start a new payment says so instead of doing nothing, and keeps the wait', async () => {
+    (api.hirePaymentStatus as jest.Mock)
+      .mockResolvedValueOnce(NOT_FOUND_STATUS)
+      .mockResolvedValueOnce(CONFIRMING_STATUS)
+      .mockRejectedValueOnce(new Error('Too many attempts. Please wait a minute and try again.'))
+      .mockResolvedValue(CONFIRMING_STATUS);
+    (openRedirectSession as jest.Mock).mockResolvedValue({ type: 'cancel' });
+    await renderScreen();
+    await payByCard();
+    await passTime(FULL_WAIT_MS);
+    await screen.findByText(STILL_CONFIRMING);
+
+    await startOver();
+
+    expect(await screen.findByText('Too many attempts. Please wait a minute and try again.')).toBeTruthy();
+    expect(screen.getByText(STILL_CONFIRMING)).toBeTruthy();
+    expect(screen.getByRole('button', { name: 'Start a new payment' })).toBeTruthy();
+  });
+
+  // The deployed API answers 409 "already being confirmed" for the one checkout call that discovers an
+  // invoice has just expired (backend handoff BH-1, item 2). The next call works, so the app asks and retries once.
+  const CONFLICT_TEXT = 'A payment for this proposal is already being confirmed. Check its status before trying again.';
+  const conflict = () => Object.assign(new Error(CONFLICT_TEXT), { status: 409 });
+
+  it('a 409 on the checkout of a payment that has just expired is retried once, and the checkout opens', async () => {
+    (api.createHireCheckoutSession as jest.Mock).mockRejectedValueOnce(conflict());
+    (api.hirePaymentStatus as jest.Mock)
+      .mockResolvedValueOnce(NOT_FOUND_STATUS)
+      .mockResolvedValueOnce({ application_status: 'pending', payment_status: 'not_paid', invoice_id: 'inv-1' });
+    (openRedirectSession as jest.Mock).mockResolvedValue({ type: 'cancel' });
+    await renderScreen();
+    await payByCard();
+    await passTime(FULL_WAIT_MS);
+
+    expect(api.createHireCheckoutSession).toHaveBeenCalledTimes(2);
+    expect(openRedirectSession).toHaveBeenCalledTimes(1);
+    expect(screen.queryByText(CONFLICT_TEXT)).toBeNull();
+  });
+
+  it('a 409 on a payment the server still has open is not retried, and shows the server message', async () => {
+    (api.createHireCheckoutSession as jest.Mock).mockRejectedValueOnce(conflict());
+    (api.hirePaymentStatus as jest.Mock).mockResolvedValueOnce(NOT_FOUND_STATUS).mockResolvedValueOnce(CONFIRMING_STATUS);
+    await renderScreen();
+    await payByCard();
+    await passTime(1500);
+
+    expect(await screen.findByText(CONFLICT_TEXT)).toBeTruthy();
+    expect(api.createHireCheckoutSession).toHaveBeenCalledTimes(1);
+    expect(openRedirectSession).not.toHaveBeenCalled();
+  });
+
+  it('a 409 whose status check fails shows the original message, not the check error', async () => {
+    (api.createHireCheckoutSession as jest.Mock).mockRejectedValueOnce(conflict());
+    (api.hirePaymentStatus as jest.Mock)
+      .mockResolvedValueOnce(NOT_FOUND_STATUS)
+      .mockRejectedValueOnce(new Error('Too many attempts. Please wait a minute and try again.'));
+    await renderScreen();
+    await payByCard();
+    await passTime(1500);
+
+    expect(await screen.findByText(CONFLICT_TEXT)).toBeTruthy();
+    expect(screen.queryByText('Too many attempts. Please wait a minute and try again.')).toBeNull();
+    expect(api.createHireCheckoutSession).toHaveBeenCalledTimes(1);
+  });
+
+  it('an error other than 409 does not trigger a status check or a retry', async () => {
+    (api.createHireCheckoutSession as jest.Mock).mockRejectedValueOnce(new Error('Could not reach TaskBuddy.'));
+    (api.hirePaymentStatus as jest.Mock).mockResolvedValueOnce(NOT_FOUND_STATUS);
+    await renderScreen();
+    await payByCard();
+    await passTime(1500);
+
+    expect(await screen.findByText('Could not reach TaskBuddy.')).toBeTruthy();
+    expect(api.hirePaymentStatus).toHaveBeenCalledTimes(1); // only the one when the sheet opened
+    expect(api.createHireCheckoutSession).toHaveBeenCalledTimes(1);
+  });
+
   it('while one payment waits, the other open proposals cannot be hired, and the list says why', async () => {
     const blair = application({
       id: 'app-2',
