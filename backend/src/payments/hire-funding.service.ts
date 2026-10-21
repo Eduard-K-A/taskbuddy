@@ -187,27 +187,33 @@ export class HireFundingService {
         );
       const attempt = existing as XenditHirePaymentAttempt | null;
       if (attempt) {
-        if (attempt.status === 'pending') {
-          await this.reconcileHireInvoice(attempt);
-          const latestAttempt = await this.findHireAttempt(
-            user.id,
-            application.id,
-            attempt.invoice_id ?? undefined,
+        if (attempt.status !== 'pending')
+          throw new ConflictException(
+            'A payment for this proposal is already being confirmed. Check its status before trying again.',
           );
-          if (latestAttempt?.status === 'processed')
-            throw new ConflictException(
-              'This payment has already been processed. Refresh the proposals before trying again.',
-            );
-          if (latestAttempt?.status === 'pending' && latestAttempt.checkout_url)
-            return {
-              url: latestAttempt.checkout_url,
-              session_id: latestAttempt.invoice_id,
-              amount: Number(latestAttempt.expected_amount),
-            };
-        }
-        throw new ConflictException(
-          'A payment for this proposal is already being confirmed. Check its status before trying again.',
+        await this.reconcileHireInvoice(attempt);
+        const latestAttempt = await this.findHireAttempt(
+          user.id,
+          application.id,
+          attempt.invoice_id ?? undefined,
         );
+        if (latestAttempt?.status === 'processed')
+          throw new ConflictException(
+            'This payment has already been processed. Refresh the proposals before trying again.',
+          );
+        if (latestAttempt?.status === 'pending' && latestAttempt.checkout_url)
+          return {
+            url: latestAttempt.checkout_url,
+            session_id: latestAttempt.invoice_id,
+            amount: Number(latestAttempt.expected_amount),
+          };
+        if (
+          latestAttempt?.status !== 'expired' &&
+          latestAttempt?.status !== 'failed'
+        )
+          throw new ConflictException(
+            'A payment for this proposal is already being confirmed. Check its status before trying again.',
+          );
       }
 
       const invoiceExternalId = externalId(HIRE_PREFIX, application.id);
@@ -489,7 +495,14 @@ export class HireFundingService {
       }
     }
 
-    if (attempt) await this.reconcileHireInvoice(attempt);
+    if (attempt) {
+      await this.reconcileHireInvoice(attempt);
+      attempt = await this.findHireAttempt(
+        user.id,
+        applicationId,
+        attempt.invoice_id ?? undefined,
+      );
+    }
     application = await this.load(applicationId);
     if (!application?.jobs)
       throw new NotFoundException('Application not found');

@@ -686,6 +686,53 @@ describe('HireFundingService with Xendit (test mode)', () => {
     );
   });
 
+  it.each(['expired', 'failed'])(
+    'opens a fresh invoice after the existing invoice is %s',
+    async (status) => {
+      const attempt = {
+        id: 'payment-1',
+        application_id: 'app1',
+        client_id: 'c1',
+        invoice_id: 'inv_1',
+        external_id: 'hire_app1_abcd1234',
+        checkout_url: 'https://checkout-staging.xendit.co/inv_1',
+        expected_amount: 1500,
+        currency: 'PHP',
+        status: 'pending',
+      };
+      const createCheckout = jest.fn().mockResolvedValue({
+        id: 'inv_2',
+        url: 'https://checkout-staging.xendit.co/inv_2',
+      });
+      const { service } = build(
+        {
+          job_applications: [ok(application())],
+          xendit_hire_payments: [ok(attempt), ok(null)],
+        },
+        { xendit: { configured: true, createCheckout } },
+      );
+      jest
+        .spyOn(service as any, 'reconcileHireInvoice')
+        .mockResolvedValue(true);
+      jest
+        .spyOn(service as any, 'findHireAttempt')
+        .mockResolvedValue({ ...attempt, status });
+
+      const result = await service.createCheckout(
+        client,
+        { application_id: 'app1', app_redirect: APP },
+        BASE,
+      );
+
+      expect(result).toEqual({
+        url: 'https://checkout-staging.xendit.co/inv_2',
+        session_id: 'inv_2',
+        amount: 1500,
+      });
+      expect(createCheckout).toHaveBeenCalledTimes(1);
+    },
+  );
+
   it('the status check applies a paid invoice and reports the resulting hire', async () => {
     const attempt = {
       id: 'payment-1',
@@ -712,7 +759,12 @@ describe('HireFundingService with Xendit (test mode)', () => {
     );
     const { service } = build(
       {
-        xendit_hire_payments: [ok(attempt), ok(null), ok(null)],
+        xendit_hire_payments: [
+          ok(attempt),
+          ok(null),
+          ok(null),
+          ok({ ...attempt, status: 'processed' }),
+        ],
         'rpc:claim_xendit_hire_payment': [
           ok([{ ...attempt, status: 'processing' }]),
         ],
@@ -736,6 +788,32 @@ describe('HireFundingService with Xendit (test mode)', () => {
     expect(result).toEqual({
       application_status: 'accepted',
       payment_status: 'confirmed',
+      invoice_id: 'inv_1',
+    });
+  });
+
+  it('reports the reconciled invoice status instead of the stale pending status', async () => {
+    const pending = {
+      id: 'payment-1',
+      application_id: 'app1',
+      client_id: 'c1',
+      invoice_id: 'inv_1',
+      status: 'pending',
+    };
+    const { service } = build({}, { xendit: { configured: true } });
+    const findAttempt = jest
+      .spyOn(service as any, 'findHireAttempt')
+      .mockResolvedValueOnce(pending)
+      .mockResolvedValueOnce({ ...pending, status: 'expired' });
+    jest.spyOn(service as any, 'reconcileHireInvoice').mockResolvedValue(true);
+    jest.spyOn(service as any, 'load').mockResolvedValue(application());
+
+    const result = await service.hirePaymentStatus(client, 'app1', 'inv_1');
+
+    expect(findAttempt).toHaveBeenCalledTimes(2);
+    expect(result).toEqual({
+      application_status: 'pending',
+      payment_status: 'not_paid',
       invoice_id: 'inv_1',
     });
   });

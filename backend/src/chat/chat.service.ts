@@ -53,6 +53,13 @@ interface MessageRow {
   created_at: string;
 }
 
+interface LatestMessagePreview {
+  conversation_id: string;
+  last_message_body: string | null;
+  last_message_has_attachment: boolean;
+  last_message_sender_id: string;
+}
+
 // Disambiguate the two profiles FKs on conversations for PostgREST embedding.
 const CONVERSATION_SELECT =
   '*, jobs(title, status), client:profiles!conversations_client_id_fkey(full_name, avatar_url), provider:profiles!conversations_provider_id_fkey(full_name, avatar_url)';
@@ -76,11 +83,32 @@ export class ChatService {
       .order('last_message_at', { ascending: false, nullsFirst: false })
       .order('created_at', { ascending: false });
     if (error) throw new BadRequestException(error.message);
+    const conversations = data ?? [];
+    const { data: latestMessages, error: latestMessagesError } =
+      await this.supabase.admin.rpc('latest_conversation_messages', {
+        p_conversation_ids: conversations.map(
+          (conversation: ConversationRow) => conversation.id,
+        ),
+      });
+    if (latestMessagesError)
+      throw new BadRequestException(latestMessagesError.message);
     const { conversations: unread } = await this.unreadCounts(user);
-    return (data ?? []).map((c) => ({
-      ...this.shape(c as ConversationRow, user),
-      unread_count: unread[(c as ConversationRow).id] ?? 0,
-    }));
+    const latestByConversation = new Map<string, LatestMessagePreview>(
+      (latestMessages as LatestMessagePreview[]).map(
+        (message) => [message.conversation_id, message] as const,
+      ),
+    );
+    return conversations.map((c: ConversationRow) => {
+      const latest = latestByConversation.get(c.id);
+      return {
+        ...this.shape(c, user),
+        unread_count: unread[c.id] ?? 0,
+        last_message_body: latest?.last_message_body ?? null,
+        last_message_has_attachment:
+          latest?.last_message_has_attachment ?? false,
+        last_message_sender_id: latest?.last_message_sender_id ?? null,
+      };
+    });
   }
 
   /**
