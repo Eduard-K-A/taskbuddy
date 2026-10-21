@@ -69,10 +69,11 @@ type Setup = {
   pending?: number | null;
   tasks?: JobTask[];
   provider?: typeof PROVIDER | null;
+  cancelReason?: string | null;
 };
 
 /** The screen's inputs, built the way the screen builds them. */
-function viewFor({ job: overrides = {}, dispute: d = null, pending = 0, tasks, provider }: Setup = {}): JobView {
+function viewFor({ job: overrides = {}, dispute: d = null, pending = 0, tasks, provider, cancelReason = null }: Setup = {}): JobView {
   const j = job(overrides);
   return homeownerJobView({
     job: j,
@@ -80,6 +81,7 @@ function viewFor({ job: overrides = {}, dispute: d = null, pending = 0, tasks, p
     pendingCount: pending,
     tasks: tasks ?? j.job_tasks ?? [],
     provider: provider !== undefined ? provider : j.assigned_provider_id ? PROVIDER : null,
+    cancelReason,
     now: NOW,
   });
 }
@@ -457,6 +459,29 @@ describe('homeownerJobView: cancelled', () => {
       link: null,
       menu: [{ kind: 'reportProblem' }],
     });
+  });
+
+  it('the provider declined: names them, and gives their reason above the refund line', () => {
+    const view = viewFor({ job: { ...hired, cancelled_by: 'p1' }, cancelReason: 'I am sick today.' });
+    expect(view.card).toEqual({
+      tone: 'closed',
+      overline: 'CANCELLED',
+      title: 'TaskBuddyProvider declined this booking',
+      body: 'Reason: I am sick today.\nYour refund is being processed. It goes back to your payment method.',
+    });
+    expect(view.main).toEqual({ kind: 'postAgain', categoryId: 7 });
+  });
+
+  it('the provider declined with no reason known: names them, refund line only', () => {
+    const view = viewFor({ job: { ...hired, cancelled_by: 'p1' } });
+    expect(view.card.title).toBe('TaskBuddyProvider declined this booking');
+    expect(view.card.body).toBe('Your refund is being processed. It goes back to your payment method.');
+  });
+
+  it('the client cancelled: the wording is unchanged and no reason is shown', () => {
+    const view = viewFor({ job: { ...hired, cancelled_by: 'client-1' }, cancelReason: 'should not show' });
+    expect(view.card.title).toBe('Job cancelled');
+    expect(view.card.body).toBe('Your refund is being processed. It goes back to your payment method.');
   });
 
   it('hired, cancelled, complaint resolved for the provider: says the payment went to them, case as the link', () => {

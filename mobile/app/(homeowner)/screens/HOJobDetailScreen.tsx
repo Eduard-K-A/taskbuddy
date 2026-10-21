@@ -51,6 +51,7 @@ import ScheduleChangeSheet from '../../../src/components/ScheduleChangeSheet';
 import { canProposeScheduleChange, pendingScheduleChange } from '../../../src/lib/scheduleChange';
 import { findProvidersFailureMessage } from '../../../src/lib/findProvidersFailure';
 import { homeownerJobView, showsChecklist, type Action, type JobView } from '../../../src/lib/jobDetailView';
+import { cancelledByProvider, providerCancelReason } from '../../../src/lib/cancelReason';
 import { countPendingProposals, isOpenJob } from '../../../src/lib/proposalCounts';
 import {
   distanceLabel,
@@ -125,7 +126,16 @@ export default function HOJobDetailScreen({ jobId, onBack, onNavigate }: HOJobDe
         ? await api.getProvider(job.assigned_provider_id).catch(() => null)
         : null;
       const dispute = await api.jobDispute(jobId);
-      return { job, provider, dispute };
+      // A booking the provider declined: their reason, from the job or (until the backend stores it) their notification.
+      const cancelReason = cancelledByProvider(job)
+        ? providerCancelReason(
+            job,
+            job.cancellation_reason?.trim()
+              ? null
+              : await Promise.resolve().then(() => api.notifications()).catch(() => null),
+          )
+        : null;
+      return { job, provider, dispute, cancelReason };
     } finally {
       setRefreshing(false);
     }
@@ -247,7 +257,7 @@ export default function HOJobDetailScreen({ jobId, onBack, onNavigate }: HOJobDe
   };
 
   const view: JobView | null = job
-    ? homeownerJobView({ job, dispute, pendingCount, tasks, provider, now: Date.now() })
+    ? homeownerJobView({ job, dispute, pendingCount, tasks, provider, cancelReason: data?.cancelReason ?? null, now: Date.now() })
     : null;
   const main = view?.main ?? null;
   const link = view?.link ?? null;

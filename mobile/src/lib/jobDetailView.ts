@@ -1,5 +1,6 @@
 import type { Dispute, Job, JobTask } from './api';
 import { peso, plural, timeOfDay } from './format';
+import { cancelledByProvider } from './cancelReason';
 
 /**
  * What a job's detail screen shows: the status card, the progress step, one
@@ -91,6 +92,8 @@ export type HomeownerJobInput = {
   tasks: readonly JobTask[];
   /** The hired provider, or null when none is assigned or the lookup failed. */
   provider: { profiles?: { full_name: string } | null } | null;
+  /** The provider's reason when they declined the booking, if known. */
+  cancelReason?: string | null;
   /** Current time in ms. Kept for callers; the view no longer depends on it. */
   now: number;
 };
@@ -109,7 +112,7 @@ export function homeownerJobView(input: HomeownerJobInput): JobView {
 }
 
 function baseHomeownerJobView(input: HomeownerJobInput): JobView {
-  const { job, dispute, pendingCount, tasks, provider } = input;
+  const { job, dispute, pendingCount, tasks, provider, cancelReason } = input;
   const hired = !!job.assigned_provider_id;
   const everyTaskDone = tasks.every((task) => task.is_done);
   const allTasksDone = tasks.length > 0 && everyTaskDone;
@@ -291,12 +294,17 @@ function baseHomeownerJobView(input: HomeownerJobInput): JobView {
           menu: [],
         };
       }
+      // The hired provider declined: say so, with their reason when it is known.
+      const declined = cancelledByProvider(job);
+      const payment = cancelledPayment(dispute?.resolution, yourPayment);
       return {
         card: {
           tone: 'closed',
           overline: 'CANCELLED',
-          title: 'Job cancelled',
-          body: hired ? cancelledPayment(dispute?.resolution, yourPayment) : 'Providers can no longer apply.',
+          title: declined ? `${subject} declined this booking` : 'Job cancelled',
+          body: hired
+            ? declined && cancelReason ? `Reason: ${cancelReason}\n${payment}` : payment
+            : 'Providers can no longer apply.',
         },
         step: 'cancelled',
         main: { kind: 'postAgain', categoryId: job.category_id },
